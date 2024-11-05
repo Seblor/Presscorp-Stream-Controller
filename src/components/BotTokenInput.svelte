@@ -1,8 +1,10 @@
 <script>
+  import { preventDefault } from 'svelte/legacy';
+
   import { createEventDispatcher } from "svelte";
 
   const dispatch = createEventDispatcher();
-  let token = "";
+  let token = $state("");
 
   function handleSubmit() {
     dispatch("tokenSubmit", token);
@@ -13,7 +15,7 @@
   class="w-full bg-gradient-to-r from-gray-900 to-gray-800 p-6 rounded-lg shadow-lg"
 >
   <form
-    on:submit|preventDefault={handleSubmit}
+    onsubmit={preventDefault(handleSubmit)}
     class="flex items-center space-x-4"
   >
     <input

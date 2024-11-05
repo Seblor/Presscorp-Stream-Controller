@@ -1,13 +1,14 @@
 <script>
   import { createEventDispatcher } from "svelte";
 
-  export let botName = "";
-  export let botIcon = "";
+  let { botName = "", botIcon = "" } = $props();
 
   const dispatch = createEventDispatcher();
 
   function handleReset() {
-    dispatch("resetToken");
+    if (confirm("Are you sure you want to disconnect?")) {
+      dispatch("resetToken");
+    }
   }
 </script>
 
@@ -31,13 +32,23 @@
     {#if botName}
       <span class="text-lg font-semibold text-white">{botName}</span>
     {:else}
-      <div class="text-lg animate-pulse w-48 h-8 rounded-full bg-slate-700 font-semibold text-white"></div>
+      <div
+        class="text-lg animate-pulse w-48 h-8 rounded-full bg-slate-700 font-semibold text-white"
+      ></div>
     {/if}
   </div>
-  <button
-    on:click={handleReset}
-    class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:ring-offset-gray-900 transition duration-200"
-  >
-    Disconnect
-  </button>
+  <div class="flex gap-4">
+    <button
+      onclick={window.location.reload()}
+      class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 focus:ring-offset-gray-900 transition duration-200"
+    >
+      Reconnect
+    </button>
+    <button
+      onclick={handleReset}
+      class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:ring-offset-gray-900 transition duration-200"
+    >
+      Disconnect
+    </button>
+  </div>
 </div>

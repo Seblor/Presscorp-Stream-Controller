@@ -1,7 +1,7 @@
 <script lang="ts">
-  import BotTokenInput from "./BotTokenInput.svelte";
-  import BotInfoDisplay from "./BotInfoDisplay.svelte";
-  import discordBot from '../connections/DiscordBot'
+  import BotTokenInput from "../BotTokenInput.svelte";
+  import BotInfoDisplay from "../BotInfoDisplay.svelte";
+  import discordBot from '../../connections/DiscordBot'
 
   let inputBotToken = localStorage.getItem("botToken") || "";
   let token = $state(inputBotToken);
@@ -23,11 +23,10 @@
     // some dummy data.
     token = userToken;
     await discordBot.login(token);
-    const botData = discordBot.getData();
+    const botData = discordBot.getBotData();
     botName = botData.name;
     botIcon = botData.iconUrl;
   }
-
   function handleResetToken() {
     inputBotToken = "";
     token = "";
@@ -36,7 +35,7 @@
   }
 </script>
 
-<div class="w-full max-w-2xl mx-auto">
+<div class="w-full">
   {#if hasToken}
     <BotInfoDisplay {botName} {botIcon} on:resetToken={handleResetToken} />
   {:else}
