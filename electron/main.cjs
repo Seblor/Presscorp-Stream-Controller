@@ -30,6 +30,8 @@ const createWindow = () => {
     }
   })
 
+  addFocusFix(mainWindow);
+
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url);
     return { action: 'deny' };
@@ -55,6 +57,33 @@ const createWindow = () => {
 
     log('Electron running in prod mode: 🚀')
   }
+}
+
+const isWindows = process.platform === 'win32';
+let needsFocusFix = false;
+let triggeringProgrammaticBlur = false;
+
+function addFocusFix (win) {
+
+  win.on('blur', (event) => {
+    if (!triggeringProgrammaticBlur) {
+      needsFocusFix = true;
+    }
+  })
+
+  win.on('focus', (event) => {
+    if (isWindows && needsFocusFix) {
+      needsFocusFix = false;
+      triggeringProgrammaticBlur = true;
+      setTimeout(function () {
+        win.blur();
+        win.focus();
+        setTimeout(function () {
+          triggeringProgrammaticBlur = false;
+        }, 100);
+      }, 100);
+    }
+  })
 }
 
 // This method will be called when Electron has finished

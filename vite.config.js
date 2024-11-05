@@ -7,7 +7,6 @@ export default defineConfig({
   optimizeDeps: {
     exclude: [
       'discord.js',
-      '@discordjs/voice',
     ],
   },
   base: process.env.DEV_ENV == 'true' ? '/' : './',

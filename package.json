@@ -23,7 +23,6 @@
     "make": "npm run build && electron-forge make"
   },
   "devDependencies": {
-    "@discordjs/voice": "^0.17.0",
     "@electron-forge/cli": "7.4.0",
     "@electron-forge/maker-deb": "7.4.0",
     "@electron-forge/maker-rpm": "7.4.0",
@@ -48,6 +47,7 @@
     "zlib-sync": "^0.1.9"
   },
   "dependencies": {
+    "@discordjs/voice": "^0.17.0",
     "discord.js": "^14.16.3",
     "electron-squirrel-startup": "1.0.0",
     "lodash": "^4.17.21",

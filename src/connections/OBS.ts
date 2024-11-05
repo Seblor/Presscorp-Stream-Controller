@@ -106,7 +106,9 @@ class OBSConnector {
   }
 
   changeScene (sceneUuid: string) {
-    return this.obs.call('SetCurrentProgramScene', { sceneUuid });
+    if (sceneUuid) {
+      return this.obs.call('SetCurrentProgramScene', { sceneUuid });
+    }
   }
 }
 

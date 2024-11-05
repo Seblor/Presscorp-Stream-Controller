@@ -1,10 +1,11 @@
-<script>
+<script lang="ts">
   import { preventDefault } from 'svelte/legacy';
 
-  import { createEventDispatcher } from "svelte";
+  import { createEventDispatcher, mount, onMount } from "svelte";
 
   const dispatch = createEventDispatcher();
   let token = $state("");
+  let input: HTMLElement | null = $state(null);
 
   function handleSubmit() {
     dispatch("tokenSubmit", token);
@@ -12,14 +13,14 @@
 </script>
 
 <div
-  class="w-full bg-gradient-to-r from-gray-900 to-gray-800 p-6 rounded-lg shadow-lg"
+  class="p-6 rounded-lg shadow-lg"
 >
   <form
     onsubmit={preventDefault(handleSubmit)}
     class="flex items-center space-x-4"
   >
     <input
-      type="text"
+      type="password"
       bind:value={token}
       placeholder="Enter bot token"
       class="flex-grow px-4 py-3 rounded-lg bg-gray-700 text-white placeholder-gray-400 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
