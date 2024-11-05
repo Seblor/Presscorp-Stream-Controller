@@ -9,6 +9,7 @@ class OBSConnector {
   loginPromise: Promise<any>;
   loginResolver: Function = () => { };
   isRecording = writable(false);
+  isStreaming = writable(false);
   scenes = writable<Array<{ name: string, uuid: string }>>([]);
   currentSceneUuid = writable<string>("");
 
@@ -42,6 +43,9 @@ class OBSConnector {
       const getRecordingStatusReponse = await this.obs.call('GetRecordStatus')
       this.isRecording.set(getRecordingStatusReponse.outputActive);
 
+      const getStreamingStatusReponse = await this.obs.call('GetStreamStatus')
+      this.isStreaming.set(getStreamingStatusReponse.outputActive);
+
       this.updateScenesList();
 
       const getCurrentSceneResponse = await this.obs.call('GetCurrentProgramScene')
@@ -54,6 +58,10 @@ class OBSConnector {
 
     this.obs.on('RecordStateChanged', (status) => {
       this.isRecording.set(status.outputActive);
+    });
+
+    this.obs.on('StreamStateChanged', (status) => {
+      this.isStreaming.set(status.outputActive);
     });
 
     this.obs.on('SceneListChanged', () => {
@@ -91,6 +99,14 @@ class OBSConnector {
       }
       this.stopRecordGracePeriodTimeout = undefined;
     }, get(appSettings).recordingGracePeriodSeconds * 1000);
+  }
+
+  setInputsVolume (inputUuids: Array<string>, volume: number) {
+    return inputUuids.map((input) => this.obs.call('SetInputVolume', { inputUuid: input, inputVolumeMul: volume }));
+  }
+
+  changeScene (sceneUuid: string) {
+    return this.obs.call('SetCurrentProgramScene', { sceneUuid });
   }
 }
 

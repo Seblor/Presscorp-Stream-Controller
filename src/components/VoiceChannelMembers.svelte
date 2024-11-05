@@ -4,9 +4,11 @@
   import streamingIcon from "../assets/streamingIcon.svg";
   import { appSettings } from "../settings";
   import obsConnector from "../connections/OBS";
-  import { get } from "svelte/store";
+  import debounce from "lodash/debounce";
 
   let botRole = $state("");
+  let isSomeoneSpeaking = $state(false);
+  let isSomeoneStreaming = $state(false);
 
   appSettings.subscribe((settings) => {
     botRole = settings.botRole;
@@ -21,7 +23,7 @@
     roles: Array<string>;
   }[] = $state([]);
 
-  const speakingMembers = $state([]);
+  const speakingMembers: string[] = $state([]);
 
   discordBot.onLogin(async () => {
     updateMembersList(discordBot.getCurrentVoiceChannelMembers());
@@ -33,14 +35,37 @@
 
   discordBot.onVoiceActivity(() => {
     updateMembersList(discordBot.getCurrentVoiceChannelMembers());
+    const speakingMemberIds = Object.keys(discordBot.peopleSpeaking);
     speakingMembers.splice(
       0,
       speakingMembers.length,
-      ...Object.keys(discordBot.peopleSpeaking).filter(
-        (id) => discordBot.peopleSpeaking[id],
-      ),
+      ...speakingMemberIds.filter((id) => discordBot.peopleSpeaking[id]),
     );
+
+    if (isSomeoneSpeaking !== speakingMembers.length > 0) {
+      isSomeoneSpeaking = speakingMembers.length > 0;
+
+      if (isSomeoneSpeaking) {
+        reduceBackgroundVolume();
+      } else {
+        restoreBackgroundVolume();
+      }
+    }
   });
+
+  function reduceBackgroundVolume() {
+    obsConnector.setInputsVolume(
+      $appSettings.inputsToMuteOnSpeaking,
+      $appSettings.backgroundVolumeSpeaking,
+    );
+  }
+
+  const restoreBackgroundVolume = debounce(() => {
+    obsConnector.setInputsVolume(
+      $appSettings.inputsToMuteOnSpeaking,
+      $appSettings.backgroundVolumeSilence,
+    );
+  }, 5e3);
 
   function updateMembersList(newList: typeof voiceMembers) {
     voiceMembers.splice(0, voiceMembers.length, ...newList);
@@ -51,6 +76,16 @@
       obsConnector.startRecording();
     } else {
       obsConnector.stopRecording();
+    }
+
+    const streamingMember = newList.find((member) => member.isStreaming)
+    if (isSomeoneStreaming !== Boolean(streamingMember)) {
+      isSomeoneStreaming = Boolean(streamingMember);
+      if (isSomeoneStreaming) {
+        obsConnector.changeScene($appSettings.memberStreamSceneUuid);
+      } else {
+        obsConnector.changeScene($appSettings.defaultSceneUuid);
+      }
     }
   }
 </script>

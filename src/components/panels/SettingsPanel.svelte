@@ -14,8 +14,8 @@
   obsConnector.scenes.subscribe((newScenes) => {
     if (newScenes.length === 0) return;
 
-    const defaultScene = get(appSettings).defaultSceneUuid;
-    const memberStreamScene = get(appSettings).memberStreamSceneUuid;
+    const defaultScene = $appSettings.defaultSceneUuid;
+    const memberStreamScene = $appSettings.memberStreamSceneUuid;
 
     if (newScenes.find((scene) => scene.uuid === defaultScene) === undefined) {
       appSettings.update((settings) => {

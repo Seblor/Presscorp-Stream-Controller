@@ -2,8 +2,10 @@
   import obsConnector from "../../connections/OBS";
   import VolumeOnIcon from "virtual:icons/mdi/volume-high";
   import VolumeOffIcon from "virtual:icons/mdi/volume-off";
+  import MusicIcon from "virtual:icons/mdi/music";
   import VolumeSlider from "../VolumeSlider.svelte";
   import isEqual from "lodash/isEqual";
+    import { appSettings } from "../../settings";
 
   const volumeMeters: {
     inputs: Array<{
@@ -109,6 +111,19 @@
     }
   }
 
+  function addToBackgroundInputs(inputUuid: string) {
+    if ($appSettings.inputsToMuteOnSpeaking.includes(inputUuid)) {
+      $appSettings.inputsToMuteOnSpeaking = $appSettings.inputsToMuteOnSpeaking.filter(
+        (uuid) => uuid !== inputUuid
+      );
+    } else {
+      $appSettings.inputsToMuteOnSpeaking = [
+        ...$appSettings.inputsToMuteOnSpeaking,
+        inputUuid,
+      ];
+    }
+  }
+
   main();
 </script>
 
@@ -120,6 +135,12 @@
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     {#each volumeMeters.inputs as input}
       <div class="flex bg-slate-700 rounded-xl m-2">
+        <div
+        onclick={() => addToBackgroundInputs(input.inputUuid)}
+        class="flex justify-center items-center w-12 rounded-full cursor-pointer"
+        >
+          <MusicIcon class={!$appSettings.inputsToMuteOnSpeaking.includes(input.inputUuid) ? 'opacity-25': ''} />
+        </div>
         <div class="flex justify-center items-center w-12">
           {#if inputState[input.inputUuid]?.isMuted}
             <div

@@ -8,9 +8,14 @@
 
   let currentSceneName = $state("");
   let isRecording = $state(get(obsConnector.isRecording));
+  let isStreaming = $state(get(obsConnector.isStreaming));
 
   obsConnector.isRecording.subscribe((newValue) => {
     isRecording = newValue;
+  });
+
+  obsConnector.isStreaming.subscribe((newValue) => {
+    isStreaming = newValue;
   });
 
   obsConnector.scenes.subscribe(updateSceneName);
@@ -42,12 +47,12 @@
         <pre>{isRecording ? 'Yes' : 'No'}</pre>
       {/snippet}
     </ObsStatusItem>
-    <ObsStatusItem title="Is broadcasting ?" iconClass={isRecording ? '!text-red-500' : ''}>
+    <ObsStatusItem title="Is broadcasting ?" iconClass={isStreaming ? '!text-red-500' : ''}>
       {#snippet iconSlot()}
         <BroadcastingIcon />
       {/snippet}
       {#snippet valueSlot()}
-        <pre>{isRecording ? 'Yes' : 'No'}</pre>
+        <pre>{isStreaming ? 'Yes' : 'No'}</pre>
       {/snippet}
     </ObsStatusItem>
   </div>
