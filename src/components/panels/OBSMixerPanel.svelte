@@ -105,6 +105,16 @@
     return obs.call("SetInputVolume", { inputUuid, inputVolumeMul: newVolume });
   }
 
+  function getBarColor(number: number) {
+    if (number > 17 / 20) {
+      return "rgb(239 68 68 / var(--tw-bg-opacity))";
+    } else if (number > 2 / 3) {
+      return "rgb(249 115 22 / var(--tw-bg-opacity))";
+    } else {
+      return "rgb(34 197 94 / var(--tw-bg-opacity))";
+    }
+  }
+
   main();
 </script>
 
@@ -147,17 +157,18 @@
             <h1>{input.inputName}</h1>
             <div class="min-h-4 pb-1">
               {#each input.inputLevelsMul as inputLevels}
-                <div class="relative h-2 w-1/2">
+                <div class="relative h-2 overflow-clip">
                   <div
-                    class="absolute h-2 w-2 bg-slate-500"
+                    class="absolute h-2 bg-slate-500"
                     style="width: {inputLevels[2] * 100}%;"
                   ></div>
                   <div
-                    class={`absolute h-2 w-2 bg-${inputLevels[1] < 2 / 3 ? "green" : inputLevels[1] < 3 / 20 ? "orange" : "red"}-500`}
-                    style="width: {inputLevels[1] * 100}%;"
+                    class={`absolute h-2`}
+                    style="width: {inputLevels[1] *
+                      100}%; background-color: {getBarColor(inputLevels[1])};"
                   ></div>
                   <div
-                    class="absolute h-2 w-2 border-black border-r-2"
+                    class="absolute h-2 border-black border-r-2"
                     style="width: {inputLevels[0] * 100}%;"
                   ></div>
                 </div>
