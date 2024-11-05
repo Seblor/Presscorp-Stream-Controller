@@ -47,10 +47,6 @@
   async function main() {
     await obsConnector.loginPromise;
 
-    obsConnector.obs.addListener("CurrentProgramSceneChanged", (data) => {
-      console.log("CurrentProgramSceneChanged", data);
-    });
-
     obsConnector.obs.addListener("InputVolumeMeters", (data) => {
       volumeMeters.inputs = data.inputs as typeof volumeMeters.inputs;
       const newUuids = volumeMeters.inputs.map((input) => input.inputUuid);

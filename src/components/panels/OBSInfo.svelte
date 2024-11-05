@@ -14,7 +14,6 @@
 
   obsConnector.isLoggedIn.subscribe((isLoggedIn) => {
     isObsConnected = isLoggedIn;
-    console.log({ isLoggedIn, isObsConnected });
   });
 </script>
 
