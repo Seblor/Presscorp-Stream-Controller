@@ -13,7 +13,7 @@
 </script>
 
 <div
-  class="w-full bg-gradient-to-r from-gray-900 to-gray-800 p-6 rounded-lg shadow-lg flex items-center justify-between"
+  class="p-6 size-full flex items-center justify-between"
 >
   <div class="flex items-center space-x-4">
     {#if botIcon}
@@ -33,7 +33,7 @@
       <span class="text-lg font-semibold text-white">{botName}</span>
     {:else}
       <div
-        class="text-lg animate-pulse w-48 h-8 rounded-full bg-slate-700 font-semibold text-white"
+        class="text-lg animate-pulse w-32 h-8 rounded-full bg-slate-700 font-semibold text-white"
       ></div>
     {/if}
   </div>

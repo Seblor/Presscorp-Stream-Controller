@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { OBSWebSocket, EventSubscription } from "obs-websocket-js";
+  import obsConnector from "../../connections/OBS";
   import VolumeOnIcon from "virtual:icons/mdi/volume-high";
   import VolumeOffIcon from "virtual:icons/mdi/volume-off";
   import VolumeSlider from "../VolumeSlider.svelte";
@@ -42,27 +42,14 @@
   const inputState: Record<string, { volume: number; isMuted: boolean }> =
     $state({});
 
-  const obs = new OBSWebSocket();
-
-  const loginPromise = obs.connect("ws://127.0.0.1:4455", "sdaBa5DgTQcJEi94", {
-    eventSubscriptions:
-      EventSubscription.All | EventSubscription.InputVolumeMeters,
-  });
-
   async function main() {
-    await loginPromise;
-    console.log("Connected to OBS", obs.identified);
-    console.log("Identified");
+    await obsConnector.loginPromise;
 
-    obs.call("GetSceneList").then((data) => {
-      console.log("Scenes:", data);
-    });
-
-    obs.addListener("CurrentProgramSceneChanged", (data) => {
+    obsConnector.obs.addListener("CurrentProgramSceneChanged", (data) => {
       console.log("CurrentProgramSceneChanged", data);
     });
 
-    obs.addListener("InputVolumeMeters", (data) => {
+    obsConnector.obs.addListener("InputVolumeMeters", (data) => {
       volumeMeters.inputs = data.inputs as typeof volumeMeters.inputs;
       const newUuids = volumeMeters.inputs.map((input) => input.inputUuid);
       if (!isEqual(audioTracksList, newUuids)) {
@@ -70,39 +57,38 @@
       }
     });
 
-    obs.addListener("InputVolumeChanged", (data) => {
+    obsConnector.obs.addListener("InputVolumeChanged", (data) => {
       inputState[data.inputUuid].volume = data.inputVolumeMul;
     });
 
-    obs.addListener("InputMuteStateChanged", (data) => {
+    obsConnector.obs.addListener("InputMuteStateChanged", (data) => {
       inputState[data.inputUuid].isMuted = data.inputMuted;
     });
 
-    obs.addListener("InputCreated", (data) => {
+    obsConnector.obs.addListener("InputCreated", (data) => {
       inputState[data.inputUuid].isMuted = false;
     });
 
-    obs.addListener("InputRemoved", (data) => {
+    obsConnector.obs.addListener("InputRemoved", (data) => {
       delete inputState[data.inputUuid];
     });
   }
 
   function fetchMuteState(inputUuid: string) {
-    return obs.call("GetInputMute", { inputUuid });
+    return obsConnector.obs.call("GetInputMute", { inputUuid });
   }
 
   async function fetchVolume(inputUuid: string) {
-    const response = await obs.call("GetInputVolume", { inputUuid });
-    console.log(response);
+    const response = await obsConnector.obs.call("GetInputVolume", { inputUuid });
     return response;
   }
 
   function setMute(inputUuid: string, shouldMute: boolean) {
-    return obs.call("SetInputMute", { inputUuid, inputMuted: shouldMute });
+    return obsConnector.obs.call("SetInputMute", { inputUuid, inputMuted: shouldMute });
   }
 
   function setVolume(inputUuid: string, newVolume: number) {
-    return obs.call("SetInputVolume", { inputUuid, inputVolumeMul: newVolume });
+    return obsConnector.obs.call("SetInputVolume", { inputUuid, inputVolumeMul: newVolume });
   }
 
   function getBarColor(number: number) {
