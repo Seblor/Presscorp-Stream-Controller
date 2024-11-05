@@ -145,22 +145,24 @@
           </div>
           <div class="flex flex-col grow justify-center align-middle">
             <h1>{input.inputName}</h1>
-            {#each input.inputLevelsMul as inputLevels}
-              <div class="relative h-2 w-1/2">
-                <div
-                  class="absolute h-2 w-2 bg-slate-500"
-                  style="width: {inputLevels[2] * 100}%;"
-                ></div>
-                <div
-                  class={`absolute h-2 w-2 bg-${inputLevels[1] < 2 / 3 ? "green" : inputLevels[1] < 3 / 20 ? "orange" : "red"}-500`}
-                  style="width: {inputLevels[1] * 100}%;"
-                ></div>
-                <div
-                  class="absolute h-2 w-2 border-black border-r-2"
-                  style="width: {inputLevels[0] * 100}%;"
-                ></div>
-              </div>
-            {/each}
+            <div class="min-h-4 pb-1">
+              {#each input.inputLevelsMul as inputLevels}
+                <div class="relative h-2 w-1/2">
+                  <div
+                    class="absolute h-2 w-2 bg-slate-500"
+                    style="width: {inputLevels[2] * 100}%;"
+                  ></div>
+                  <div
+                    class={`absolute h-2 w-2 bg-${inputLevels[1] < 2 / 3 ? "green" : inputLevels[1] < 3 / 20 ? "orange" : "red"}-500`}
+                    style="width: {inputLevels[1] * 100}%;"
+                  ></div>
+                  <div
+                    class="absolute h-2 w-2 border-black border-r-2"
+                    style="width: {inputLevels[0] * 100}%;"
+                  ></div>
+                </div>
+              {/each}
+            </div>
           </div>
         </div>
       </div>

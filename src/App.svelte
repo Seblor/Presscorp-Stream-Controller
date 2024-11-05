@@ -32,7 +32,7 @@
       Waiting
     {/if}
   </div>
-  <div class="settings panel h-full mr-2">
+  <div class="settings panel h-full mx-2">
     <SettingsPanel />
   </div>
   <div class="mixer overflow-y-hidden panel h-full mr-2">
@@ -70,34 +70,28 @@
 
   .container {
     display: grid;
+    grid-auto-columns: 1fr;
     grid-template-columns: 1fr 1fr;
     grid-template-rows: min-content min-content 1fr min-content;
-    grid-auto-columns: 1fr;
     gap: 0.5em 0.5em;
-    grid-auto-flow: row;
     grid-template-areas:
       "bot-info bot-info"
-      "channel settings"
+      "settings settings"
       "channel mixer"
       "footer footer";
   }
-
   .bot-info {
     grid-area: bot-info;
   }
-
   .footer {
     grid-area: footer;
   }
-
-  .channel {
-    grid-area: channel;
-  }
-
   .mixer {
     grid-area: mixer;
   }
-
+  .channel {
+    grid-area: channel;
+  }
   .settings {
     grid-area: settings;
   }
