@@ -1,4 +1,4 @@
-import { VoiceConnection, VoiceConnectionStatus, type DiscordGatewayAdapterCreator } from "@discordjs/voice";
+import { VoiceConnection, type DiscordGatewayAdapterCreator } from "@discordjs/voice";
 import { type Client, type VoiceBasedChannel } from "discord.js";
 const Discord = require("discord.js") as typeof import("discord.js");
 const DiscordVoice = require("@discordjs/voice") as typeof import("@discordjs/voice");
@@ -16,8 +16,9 @@ export class DiscordBot {
   private readonly eventListeners = {
     'onLogin': [] as Array<() => void>,
     'onVoiceChannelsChange': [] as Array<() => void>,
-    'onVoiceChannelsMembersChange': [] as Array<(members: Array<{ id: string, name: string, iconUrl: string, isMuted: boolean, isStreaming: boolean }>) => void>,
+    'onVoiceChannelsMembersChange': [] as Array<(members: Array<{ id: string, name: string, iconUrl: string, isMuted: boolean, isStreaming: boolean, roles: Array<string> }>) => void>,
     'onVoiceChannelsVoiceActivity': [] as Array<(isSomeoneSpeaking: boolean) => void>,
+    'onRolesChange': [] as Array<(roles: Array<{ id: string, name: string, color: string }>) => void>,
   }
 
   constructor() {
@@ -44,6 +45,21 @@ export class DiscordBot {
       if (channel.isVoiceBased()) {
         this.eventListeners.onVoiceChannelsChange.forEach((callback) => callback());
       }
+    });
+
+    this.client.on("roleCreate", async (role) => {
+      const roles = await this.getRoles(role.guild.id);
+      this.eventListeners.onRolesChange.forEach((callback) => callback(roles));
+    });
+
+    this.client.on("roleDelete", async (role) => {
+      const roles = await this.getRoles(role.guild.id);
+      this.eventListeners.onRolesChange.forEach((callback) => callback(roles));
+    });
+
+    this.client.on("roleUpdate", async (role) => {
+      const roles = await this.getRoles(role.guild.id);
+      this.eventListeners.onRolesChange.forEach((callback) => callback(roles));
     });
 
     this.client.on('voiceStateUpdate', async (oldState, newState) => {
@@ -79,6 +95,7 @@ export class DiscordBot {
             isMuted: member.voice.selfMute,
             isStreaming: member.voice.streaming,
             iconUrl: member.user.displayAvatarURL(),
+            roles: [...member.roles.cache.keys()],
           }))
         ));
       }
@@ -134,7 +151,7 @@ export class DiscordBot {
     }
   }
 
-  getCurrentVoiceChannelMembers(): Array<{ id: string, name: string, iconUrl: string, isMuted: boolean, isStreaming: boolean }> {
+  getCurrentVoiceChannelMembers (): Array<{ id: string, name: string, iconUrl: string, isMuted: boolean, isStreaming: boolean, roles: Array<string> }> {
     if (!this.voiceConnection) {
       return [];
     }
@@ -148,6 +165,7 @@ export class DiscordBot {
       isMuted: member.voice.selfMute,
       isStreaming: member.voice.streaming,
       iconUrl: member.user.displayAvatarURL(),
+      roles: [...member.roles.cache.keys()],
     }))
   }
 
@@ -191,8 +209,43 @@ export class DiscordBot {
     this.eventListeners.onVoiceChannelsVoiceActivity.push(callback);
   }
 
-  onVoiceMembersChange (callback: (members: Array<{ id: string, name: string, iconUrl: string, isMuted: boolean, isStreaming: boolean }>) => void) {
+  onVoiceMembersChange (callback: (members: Array<{ id: string, name: string, iconUrl: string, isMuted: boolean, isStreaming: boolean, roles: Array<string> }>) => void) {
     this.eventListeners.onVoiceChannelsMembersChange.push(callback);
+  }
+
+  onRolechanged (callback: (roles: Array<{ id: string, name: string, color: string }>) => void) {
+    this.eventListeners.onRolesChange.push(callback);
+  }
+
+  async getRoles (guildId?: string): Promise<Array<{ id: string, name: string, color: string }>> {
+    await this.waitForLoggedIn;
+    const guild = this.client.guilds.cache.get(guildId || this.voiceConnection.joinConfig.guildId)
+
+    if (!guild) {
+      return Promise.resolve([]);
+    }
+
+    const roles = await guild.roles.fetch();
+    return [...roles.values()].map((role) => ({
+      id: role.id,
+      name: role.name,
+      color: role.hexColor,
+    }));
+  }
+
+  async botHasRole (roleId: string): Promise<boolean> {
+    await this.waitForLoggedIn;
+    const guild = this.client.guilds.cache.get(this.voiceConnection?.joinConfig.guildId || '');
+    if (!guild) {
+      return false;
+    }
+
+    const role = guild.roles.cache.get(roleId);
+    if (!role) {
+      return false;
+    }
+
+    return guild.members.me?.roles.cache.has(role.id) || false;
   }
 
   getAllVoiceChannels (): Array<{

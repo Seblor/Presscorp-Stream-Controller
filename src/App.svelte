@@ -4,6 +4,8 @@
   import discordBot from "./connections/DiscordBot";
   import ObsMixerPanel from "./components/panels/OBSMixerPanel.svelte";
   import SettingsPanel from "./components/panels/SettingsPanel.svelte";
+  import ObsInfo from "./components/panels/OBSInfo.svelte";
+    import BrowserStatus from "./components/panels/BrowserStatus.svelte";
 
   let isBotReady = $state(false);
 
@@ -20,9 +22,18 @@
   class="container overflow-y-hidden min-h-screen bg-slate-900 text-white min-w-full max-h-screen flex flex-col"
 >
   <!-- Top Part -->
-  <section class="bot-info flex justify-center items-center">
-    <BotInfo />
-  </section>
+  <!-- <section class="bot-info flex justify-center items-center"></section> -->
+  <div class="header flex justify-center items-center mt-2 mx-2">
+    <div class="bot-info panel">
+      <BotInfo />
+    </div>
+    <div class="obs-info panel">
+      <ObsInfo />
+    </div>
+    <div class="browser-status panel">
+      <BrowserStatus />
+    </div>
+  </div>
 
   <!-- Middle Part -->
   <div class="channel panel overflow-y-auto flex-shrink ml-2">
@@ -68,31 +79,55 @@
       var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
   }
 
-  .container {
-    display: grid;
-    grid-auto-columns: 1fr;
-    grid-template-columns: 1fr 1fr;
-    grid-template-rows: min-content min-content 1fr min-content;
-    gap: 0.5em 0.5em;
-    grid-template-areas:
-      "bot-info bot-info"
-      "settings settings"
-      "channel mixer"
-      "footer footer";
-  }
-  .bot-info {
-    grid-area: bot-info;
-  }
-  .footer {
-    grid-area: footer;
-  }
-  .mixer {
-    grid-area: mixer;
-  }
-  .channel {
-    grid-area: channel;
-  }
-  .settings {
-    grid-area: settings;
-  }
+  .container {  display: grid;
+  grid-template-columns: 0.4fr 0.6fr;
+  grid-template-rows: min-content min-content 1fr min-content;
+  grid-auto-columns: 1fr;
+  gap: 0.5em 0.5em;
+  grid-auto-flow: row;
+  grid-template-areas:
+    "header header"
+    "settings settings"
+    "channel mixer"
+    "footer footer";
+}
+
+.footer { grid-area: footer; }
+
+.mixer { grid-area: mixer; }
+
+.channel { grid-area: channel; }
+
+.settings { grid-area: settings; }
+
+.header {  display: grid;
+  grid-template-columns: 2.1fr 0.7fr 0.2fr;
+  grid-template-rows: minmax(50px, auto);
+  gap: 0.5em 0.5em;
+  grid-auto-flow: row;
+  justify-content: stretch;
+  align-content: stretch;
+  justify-items: stretch;
+  align-items: stretch;
+  grid-template-areas:
+    "bot-info obs-info browser-status";
+  justify-self: stretch;
+  align-self: stretch;
+  grid-area: header;
+}
+
+.bot-info {
+  justify-self: stretch;
+  align-self: stretch;
+  grid-area: bot-info;
+}
+
+.obs-info {
+  justify-self: stretch;
+  align-self: stretch;
+  grid-area: obs-info;
+}
+
+.browser-status { grid-area: browser-status; }
+
 </style>
