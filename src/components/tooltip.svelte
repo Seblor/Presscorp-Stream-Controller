@@ -1,6 +1,9 @@
 <script lang="ts">
-  let { title = "", class: classList = '' }: { title: string; class?: string } =
-    $props();
+  let {
+    title = "",
+    class: classList = "",
+    fixed = false,
+  }: { title: string; class?: string; fixed: boolean } = $props();
 
   let isHovered = $state(false);
   let x = $state();
@@ -8,11 +11,19 @@
 
   function mouseOver(event: MouseEvent) {
     isHovered = true;
-    x = event.pageX + 5;
+    if (event.pageX > (document.body.clientWidth * 3) / 4) {
+      x = (document.body.clientWidth * 3) / 4 + 5;
+    } else {
+      x = event.pageX - 5;
+    }
     y = event.pageY + 5;
   }
   function mouseMove(event: MouseEvent) {
-    x = event.pageX + 5;
+    if (event.pageX > (document.body.clientWidth * 3) / 4) {
+      x = (document.body.clientWidth * 3) / 4 + 5;
+    } else {
+      x = event.pageX - 5;
+    }
     y = event.pageY + 5;
   }
   function mouseLeave() {
@@ -34,7 +45,7 @@
 {#if isHovered}
   <div
     style="top: {y}px; left: {x}px;"
-    class="tooltip bg-slate-500 shadow-xl drop-shadow-xl z-10"
+    class={`tooltip bg-slate-500 shadow-xl drop-shadow-xl z-40 ${fixed ? "fixed" : "absolute"}`}
   >
     {@html title}
   </div>
@@ -45,6 +56,5 @@
     border: 1px solid #ddd;
     border-radius: 4px;
     padding: 4px;
-    position: absolute;
   }
 </style>

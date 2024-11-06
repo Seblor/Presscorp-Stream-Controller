@@ -16,6 +16,10 @@
   function createWebSocket () {
     const socket = new WebSocket('ws://127.0.0.1:4444');
 
+    socket.addEventListener('error', () => {
+      createWebSocket();
+    });
+
     socket.addEventListener('open', () => {
       socket.addEventListener('message', (event) => {
         const message = JSON.parse(event.data);

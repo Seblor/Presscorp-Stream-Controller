@@ -44,7 +44,7 @@
         <RecordingIcon />
       {/snippet}
       {#snippet valueSlot()}
-        <pre>{isRecording ? 'Yes' : 'No'}</pre>
+        <pre>{isRecording ? 'On' : 'Off'}</pre>
       {/snippet}
     </ObsStatusItem>
     <ObsStatusItem title="Is broadcasting ?" iconClass={isStreaming ? '!text-red-500' : ''}>
@@ -52,7 +52,7 @@
         <BroadcastingIcon />
       {/snippet}
       {#snippet valueSlot()}
-        <pre>{isStreaming ? 'Yes' : 'No'}</pre>
+        <pre>{isStreaming ? 'On' : 'Off'}</pre>
       {/snippet}
     </ObsStatusItem>
   </div>

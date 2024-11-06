@@ -1,5 +1,5 @@
 import { VoiceConnection, type DiscordGatewayAdapterCreator } from "@discordjs/voice";
-import { SlashCommandBuilder, type Client, type GuildBasedChannel, type VoiceBasedChannel } from "discord.js";
+import { type Client, type GuildBasedChannel, type VoiceBasedChannel } from "discord.js";
 import { get, writable } from "svelte/store";
 import { appSettings } from "../stores/settings";
 import obsConnector from "./OBS";
@@ -43,6 +43,12 @@ export class DiscordBot {
 
     this.client.on("interactionCreate", async (interaction) => {
       if (!interaction.isCommand()) {
+        return;
+      }
+
+      const guild = this.client.guilds.cache.get((this.client.channels.cache.get(get(appSettings).selectedChannelId) as GuildBasedChannel)?.guildId || '')
+
+      if (!guild || interaction.guildId !== guild.id) {
         return;
       }
 
@@ -151,8 +157,8 @@ export class DiscordBot {
     }
 
     await channel.guild.commands.set([
-      new Discord.SlashCommandBuilder().setName('start-recording').setDescription('start recording'),
-      new Discord.SlashCommandBuilder().setName('stop-recording').setDescription('stop recording'),
+      new Discord.SlashCommandBuilder().setName('start-recording').setDescription('start recording').setDefaultMemberPermissions(Discord.PermissionFlagsBits.ManageGuild),
+      new Discord.SlashCommandBuilder().setName('stop-recording').setDescription('stop recording').setDefaultMemberPermissions(Discord.PermissionFlagsBits.ManageGuild),
     ])
 
     this.voiceConnection = DiscordVoice.joinVoiceChannel({

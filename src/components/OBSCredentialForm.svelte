@@ -2,7 +2,9 @@
   import { get } from "svelte/store";
   import obsConnector from "../connections/OBS";
   import { obsCredentials } from "../stores/credentials";
+  import HelpIcon from "virtual:icons/mdi/help-circle-outline";
   import { onMount } from "svelte";
+    import Tooltip from "./tooltip.svelte";
 
   let websocketPort = $state(get(obsCredentials).obsWebsocketPort);
   let password = $state(get(obsCredentials).obsWebsocketPassword);
@@ -58,7 +60,13 @@
     </label>
   </div>
 
-  <div class="flex justify-center">
+  <div class="relative flex justify-center">
+    <div class="absolute right-0">
+
+      <Tooltip title='In OBS, enable the Remote Control Websocket and get the credentials by going to the "Tools" menu and "Websocket Server Settings" option.' fixed>
+        <HelpIcon class="size-10 text-slate-400" />
+      </Tooltip>
+    </div>
     <button
       disabled={isConnecting}
       type="submit"
