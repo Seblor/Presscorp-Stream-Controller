@@ -21,6 +21,7 @@ module.exports = {
         iconUrl: 'https://raw.githubusercontent.com/Seblor/Presscorp-Stream-Controller/main/public/favicon.png',
         authors: 'Sébastien "Seblor" Lorentz',
         description: 'Presscorp Stream Controller',
+        title: 'Presscorp Stream Controller',
         setupExe: 'Presscorp Stream Controller.exe',
       },
     },

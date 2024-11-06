@@ -3,7 +3,7 @@
     title = "",
     class: classList = "",
     fixed = false,
-  }: { title: string; class?: string; fixed: boolean } = $props();
+  }: { title: string; class?: string; fixed?: boolean } = $props();
 
   let isHovered = $state(false);
   let x = $state();

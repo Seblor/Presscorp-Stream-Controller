@@ -138,7 +138,7 @@
         <input
           type="number"
           bind:value={$appSettings.backgroundVolumeSpeaking}
-          class="bg-slate-600 rounded w-12 text-center"
+          class="bg-slate-600 rounded w-16 text-center"
         />
       </div>
       <div class="flex gap-2 justify-end">
@@ -150,7 +150,7 @@
         <input
           type="number"
           bind:value={$appSettings.backgroundVolumeSilence}
-          class="bg-slate-600 rounded w-12 text-center"
+          class="bg-slate-600 rounded w-16 text-center"
         />
       </div>
     </div>

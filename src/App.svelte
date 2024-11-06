@@ -7,6 +7,7 @@
   import ObsInfo from "./components/panels/OBSInfo.svelte";
   import BrowserStatus from "./components/panels/BrowserStatus.svelte";
   import './connections/Browser'
+  import './lib/DialogUtils'
 
   let isBotReady = $state(false);
 
