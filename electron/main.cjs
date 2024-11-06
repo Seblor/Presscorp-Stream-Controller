@@ -21,8 +21,8 @@ const createWindow = () => {
 
   // Create the browser window.
   mainWindow = new BrowserWindow({
-    width: 1300,
-    height: 600,
+    width: 1250,
+    height: 775,
     icon: path.join(__dirname, 'public', 'favicon.ico'),
     autoHideMenuBar: true,
     webPreferences: {

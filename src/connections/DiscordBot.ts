@@ -1,7 +1,8 @@
 import { VoiceConnection, type DiscordGatewayAdapterCreator } from "@discordjs/voice";
-import { type Client, type GuildBasedChannel, type VoiceBasedChannel } from "discord.js";
+import { SlashCommandBuilder, type Client, type GuildBasedChannel, type VoiceBasedChannel } from "discord.js";
 import { get, writable } from "svelte/store";
 import { appSettings } from "../stores/settings";
+import obsConnector from "./OBS";
 const Discord = require("discord.js") as typeof import("discord.js");
 const DiscordVoice = require("@discordjs/voice") as typeof import("@discordjs/voice");
 
@@ -26,6 +27,34 @@ export class DiscordBot {
         Discord.IntentsBitField.Flags.GuildVoiceStates,
         Discord.IntentsBitField.Flags.Guilds,
       ],
+    });
+
+    obsConnector.isRecording.subscribe((isRecording) => {
+      if (!get(this.isLoggedIn)) {
+        return;
+      }
+      const guild = this.client.guilds.cache.get((this.client.channels.cache.get(get(appSettings).selectedChannelId) as GuildBasedChannel)?.guildId || '')
+      if (isRecording) {
+        guild.members.me?.setNickname(`[ON AIR] ${this.client.user?.username}`);
+      } else {
+        guild.members.me?.setNickname(this.client.user?.username);
+      }
+    });
+
+    this.client.on("interactionCreate", async (interaction) => {
+      if (!interaction.isCommand()) {
+        return;
+      }
+
+      if (interaction.commandName === 'start-recording') {
+        obsConnector.startRecording();
+        interaction.reply('Recording started');
+      }
+
+      if (interaction.commandName === 'stop-recording') {
+        obsConnector.stopRecording(true);
+        interaction.reply('Recording stopped');
+      }
     });
 
     this.client.on("channelUpdate", async (channel) => {
@@ -115,11 +144,16 @@ export class DiscordBot {
     return this.client.destroy();
   }
 
-  joinVoicechannel (channelId: string) {
+  async joinVoicechannel (channelId: string) {
     const channel = this.client.channels.cache.get(channelId);
     if (!channel || !channel.isVoiceBased() || channel.isDMBased()) {
       return;
     }
+
+    await channel.guild.commands.set([
+      new Discord.SlashCommandBuilder().setName('start-recording').setDescription('start recording'),
+      new Discord.SlashCommandBuilder().setName('stop-recording').setDescription('stop recording'),
+    ])
 
     this.voiceConnection = DiscordVoice.joinVoiceChannel({
       channelId,

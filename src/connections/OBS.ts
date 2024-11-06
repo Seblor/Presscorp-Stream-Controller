@@ -92,8 +92,12 @@ class OBSConnector {
     }
   }
 
-  async stopRecording () {
+  async stopRecording (force: boolean = false) {
     if (!get(this.isLoggedIn)) {
+      return;
+    }
+    if (force) {
+      await this.obs.call("StopRecord");
       return;
     }
     this.stopRecordGracePeriodTimeout = setTimeout(async () => {
