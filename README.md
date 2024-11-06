@@ -1,4 +1,4 @@
-# Presscord Stream Controller
+# Presscorp Stream Controller
 
 ![Logo](/public/favicon.png)
 
