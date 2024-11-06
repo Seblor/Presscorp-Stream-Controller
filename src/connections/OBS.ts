@@ -13,7 +13,7 @@ class OBSConnector {
 
   stopRecordGracePeriodTimeout: NodeJS.Timeout | undefined;
 
-  async login (port = "4455", password = "sdaBa5DgTQcJEi94"): Promise<boolean> {
+  async login (port: string, password: string): Promise<boolean> {
     const connectionResult = await this.obs.connect(`ws://127.0.0.1:${port}`, password, {
       eventSubscriptions:
         EventSubscription.All | EventSubscription.InputVolumeMeters,

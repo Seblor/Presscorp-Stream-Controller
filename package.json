@@ -1,6 +1,7 @@
 {
   "name": "presscorp-stream-controller",
   "description": "Presscorp Stream Controller",
+  "productName": "Presscorp Stream Controller",
   "license": "MIT",
   "private": true,
   "version": "0.1.0",
@@ -48,6 +49,7 @@
   },
   "dependencies": {
     "@discordjs/voice": "^0.17.0",
+    "@electron/remote": "^2.1.2",
     "discord.js": "^14.16.3",
     "electron-squirrel-startup": "1.0.0",
     "lodash": "^4.17.21",

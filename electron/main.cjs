@@ -2,6 +2,8 @@
 const { log } = require('console')
 const { app, BrowserWindow, shell } = require('electron')
 const path = require('path')
+const remoteModule = require('@electron/remote/main')
+remoteModule.initialize()
 
 if (require('electron-squirrel-startup')) app.quit();
 
@@ -28,9 +30,12 @@ const createWindow = () => {
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,
+      enableRemoteModule: true,
       preload: path.join(__dirname, 'preload.cjs')
     }
   })
+
+  remoteModule.enable(mainWindow.webContents)
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url);
