@@ -1,13 +1,11 @@
 
 import { OBSWebSocket, EventSubscription } from "obs-websocket-js";
 import { get, writable } from "svelte/store";
-import { appSettings } from "../settings";
+import { appSettings } from "../stores/settings";
 
 class OBSConnector {
   obs = new OBSWebSocket();
   isLoggedIn = writable(false);
-  loginPromise: Promise<any>;
-  loginResolver: Function = () => { };
   isRecording = writable(false);
   isStreaming = writable(false);
   scenes = writable<Array<{ name: string, uuid: string }>>([]);
@@ -15,42 +13,37 @@ class OBSConnector {
 
   stopRecordGracePeriodTimeout: NodeJS.Timeout | undefined;
 
-  constructor() {
-    this.loginPromise = new Promise(resolve => {
-      this.loginResolver = resolve;
-    })
-  }
-
-  async login (port = "4455", password = "sdaBa5DgTQcJEi94") {
-    this.obs.connect(`ws://127.0.0.1:${port}`, password, {
+  async login (port = "4455", password = "sdaBa5DgTQcJEi94"): Promise<boolean> {
+    const connectionResult = await this.obs.connect(`ws://127.0.0.1:${port}`, password, {
       eventSubscriptions:
         EventSubscription.All | EventSubscription.InputVolumeMeters,
-    }).then(() => {
-      this.loginResolver();
-    }).catch((error) => {
-      console.error("Error connecting to OBS", error);
-    });
+    })
+      .then(() => {
+        return this.obs.identified || new Promise<boolean>((resolve) => {
+          this.obs.once('Identified', () => resolve(true));
+        });
+      })
+      .catch((error) => {
+        console.error("Error connecting to OBS", error);
+        return false
+      });
 
-    this.loginPromise = Promise.resolve((resolve: Function) => {
-      this.loginResolver = resolve;
-    });
-
-    this.loginResolver();
+    if (!connectionResult) {
+      return false;
+    }
 
     this.isLoggedIn.set(true);
 
-    this.obs.once('Identified', async () => {
-      const getRecordingStatusReponse = await this.obs.call('GetRecordStatus')
-      this.isRecording.set(getRecordingStatusReponse.outputActive);
+    const getRecordingStatusReponse = await this.obs.call('GetRecordStatus')
+    this.isRecording.set(getRecordingStatusReponse.outputActive);
 
-      const getStreamingStatusReponse = await this.obs.call('GetStreamStatus')
-      this.isStreaming.set(getStreamingStatusReponse.outputActive);
+    const getStreamingStatusReponse = await this.obs.call('GetStreamStatus')
+    this.isStreaming.set(getStreamingStatusReponse.outputActive);
 
-      this.updateScenesList();
+    this.updateScenesList();
 
-      const getCurrentSceneResponse = await this.obs.call('GetCurrentProgramScene')
-      this.currentSceneUuid.set(getCurrentSceneResponse.sceneUuid);
-    });
+    const getCurrentSceneResponse = await this.obs.call('GetCurrentProgramScene')
+    this.currentSceneUuid.set(getCurrentSceneResponse.sceneUuid);
 
     this.obs.on('CurrentProgramSceneChanged', (data) => {
       this.currentSceneUuid.set(data.sceneUuid);
@@ -68,9 +61,13 @@ class OBSConnector {
       this.updateScenesList();
     });
 
+    return true;
   }
 
   private async updateScenesList () {
+    if (!get(this.isLoggedIn)) {
+      return;
+    }
     const getScenesResponse = await this.obs.call('GetSceneList')
     const fetchedScenes = getScenesResponse.scenes as Array<{ sceneIndex: number, sceneName: string, sceneUuid: string }>;
     this.scenes.set(
@@ -82,6 +79,9 @@ class OBSConnector {
   }
 
   async startRecording () {
+    if (!get(this.isLoggedIn)) {
+      return;
+    }
     if (this.stopRecordGracePeriodTimeout !== undefined) {
       clearTimeout(this.stopRecordGracePeriodTimeout);
       this.stopRecordGracePeriodTimeout = undefined;
@@ -92,7 +92,10 @@ class OBSConnector {
     }
   }
 
-  stopRecording () {
+  async stopRecording () {
+    if (!get(this.isLoggedIn)) {
+      return;
+    }
     this.stopRecordGracePeriodTimeout = setTimeout(async () => {
       if (get(this.isRecording)) {
         await this.obs.call("StopRecord");
@@ -101,11 +104,17 @@ class OBSConnector {
     }, get(appSettings).recordingGracePeriodSeconds * 1000);
   }
 
-  setInputsVolume (inputUuids: Array<string>, volume: number) {
+  async setInputsVolume (inputUuids: Array<string>, volume: number) {
+    if (!get(this.isLoggedIn)) {
+      return;
+    }
     return inputUuids.map((input) => this.obs.call('SetInputVolume', { inputUuid: input, inputVolumeMul: volume }));
   }
 
-  changeScene (sceneUuid: string) {
+  async changeScene (sceneUuid: string) {
+    if (!get(this.isLoggedIn)) {
+      return;
+    }
     if (sceneUuid) {
       return this.obs.call('SetCurrentProgramScene', { sceneUuid });
     }

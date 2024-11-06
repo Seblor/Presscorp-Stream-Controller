@@ -1,20 +1,15 @@
 <script lang="ts">
-  import { preventDefault } from 'svelte/legacy';
+  import { preventDefault } from "svelte/legacy";
+  import { discordToken } from "../stores/credentials";
 
-  import { createEventDispatcher, mount, onMount } from "svelte";
-
-  const dispatch = createEventDispatcher();
   let token = $state("");
-  let input: HTMLElement | null = $state(null);
 
   function handleSubmit() {
-    dispatch("tokenSubmit", token);
+    discordToken.set(token);
   }
 </script>
 
-<div
-  class="p-6 rounded-lg shadow-lg"
->
+<div class="p-6 rounded-lg shadow-lg">
   <form
     onsubmit={preventDefault(handleSubmit)}
     class="flex items-center space-x-4"

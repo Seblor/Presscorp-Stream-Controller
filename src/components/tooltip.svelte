@@ -1,15 +1,17 @@
-<script>
-  export let title = "";
-  let isHovered = false;
-  let x;
-  let y;
+<script lang="ts">
+  let { title = "", class: classList = '' }: { title: string; class?: string } =
+    $props();
 
-  function mouseOver(event) {
+  let isHovered = $state(false);
+  let x = $state();
+  let y = $state();
+
+  function mouseOver(event: MouseEvent) {
     isHovered = true;
     x = event.pageX + 5;
     y = event.pageY + 5;
   }
-  function mouseMove(event) {
+  function mouseMove(event: MouseEvent) {
     x = event.pageX + 5;
     y = event.pageY + 5;
   }
@@ -21,15 +23,21 @@
 <!-- svelte-ignore a11y_mouse_events_have_key_events -->
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
-  on:mouseover={mouseOver}
-  on:mouseleave={mouseLeave}
-  on:mousemove={mouseMove}
+  class={classList}
+  onmouseover={mouseOver}
+  onmouseleave={mouseLeave}
+  onmousemove={mouseMove}
 >
   <slot />
 </div>
 
 {#if isHovered}
-  <div style="top: {y}px; left: {x}px;" class="tooltip bg-slate-500 shadow-xl drop-shadow-xl">{@html title}</div>
+  <div
+    style="top: {y}px; left: {x}px;"
+    class="tooltip bg-slate-500 shadow-xl drop-shadow-xl z-10"
+  >
+    {@html title}
+  </div>
 {/if}
 
 <style>

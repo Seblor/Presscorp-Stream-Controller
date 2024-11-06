@@ -2,9 +2,10 @@
   import discordBot from "../connections/DiscordBot";
   import mutedIcon from "../assets/mutedIcon.svg";
   import streamingIcon from "../assets/streamingIcon.svg";
-  import { appSettings } from "../settings";
+  import { appSettings } from "../stores/settings";
   import obsConnector from "../connections/OBS";
   import debounce from "lodash/debounce";
+  import { openStream } from "../connections/Browser";
 
   let botRole = $state("");
   let isSomeoneSpeaking = $state(false);
@@ -70,19 +71,23 @@
   function updateMembersList(newList: typeof voiceMembers) {
     voiceMembers.splice(0, voiceMembers.length, ...newList);
 
-    if (
-      newList.filter((member) => !member.roles.includes(botRole)).length > 0
-    ) {
-      obsConnector.startRecording();
-    } else {
-      obsConnector.stopRecording();
+    if (botRole) {
+      if (
+        newList.filter((member) => !member.roles.includes(botRole)).length > 0
+      ) {
+        obsConnector.startRecording();
+      } else {
+        obsConnector.stopRecording();
+      }
     }
 
-    const streamingMember = newList.find((member) => member.isStreaming)
+    const streamingMember = newList.find((member) => member.isStreaming);
     if (isSomeoneStreaming !== Boolean(streamingMember)) {
       isSomeoneStreaming = Boolean(streamingMember);
       if (isSomeoneStreaming) {
-        obsConnector.changeScene($appSettings.memberStreamSceneUuid);
+        openStream(streamingMember.name).then(() => {
+          obsConnector.changeScene($appSettings.memberStreamSceneUuid);
+        });
       } else {
         obsConnector.changeScene($appSettings.defaultSceneUuid);
       }

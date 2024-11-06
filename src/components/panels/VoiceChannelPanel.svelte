@@ -4,6 +4,7 @@
   import voiceChannelIcon from "../../assets/voiceChannelIcon.svg";
   import DeleteIcon from "virtual:icons/mdi/delete";
   import VoiceChannelMembers from "../VoiceChannelMembers.svelte";
+  import { appSettings } from "../../stores/settings";
 
   type TreeData = {
     label: string;
@@ -18,27 +19,18 @@
     children: [],
   });
 
-  let selectedChannelId = $state(
-    localStorage.getItem("selectedChannelId") || "",
-  );
+  let selectedChannelName = $state("");
 
-  let selectedChannelName = $derived.by(() => {
-    return discordBot.getChannelName(selectedChannelId);
-  });
-
-  $effect(() => {
-    setVoiceChannelId(selectedChannelId);
-  });
-
-  function setVoiceChannelId(newId: string) {
-    if (newId) {
-      localStorage.setItem("selectedChannelId", selectedChannelId);
-      discordBot.joinVoicechannel(selectedChannelId);
+  appSettings.subscribe(() => {
+    selectedChannelName = discordBot.getChannelName(
+      $appSettings.selectedChannelId,
+    );
+    if ($appSettings.selectedChannelId) {
+      discordBot.joinVoicechannel($appSettings.selectedChannelId);
     } else {
       discordBot.leaveVoiceChannel();
     }
-    selectedChannelId = newId;
-  }
+  });
 
   function updateChannels() {
     treeData.children = [];
@@ -73,7 +65,7 @@
 </script>
 
 <div class="h-full">
-  {#if selectedChannelId}
+  {#if $appSettings.selectedChannelId}
     <div class="relative">
       <h1 class="text-xl text-center py-2">
         <span class="flex justify-center">
@@ -84,7 +76,7 @@
       <DeleteIcon
         onclick={() => {
           if (confirm("Are you sure you want to unset this channel?")) {
-            selectedChannelId = "";
+            $appSettings.selectedChannelId = "";
           }
         }}
         class="cursor-pointer text-xl absolute top-1/2 -translate-y-1/2 right-0 -translate-x-1/2 text-red-500"
@@ -95,7 +87,7 @@
   {:else}
     <h1 class="text-xl text-center py-2">Choose a voice channel</h1>
     <hr class="mx-4" />
-    <TreeView tree={treeData} bind:value={selectedChannelId} />
+    <TreeView tree={treeData} bind:value={$appSettings.selectedChannelId} />
   {/if}
 </div>
 <!-- <pre>{JSON.stringify(treeData, null, 2)}</pre> -->

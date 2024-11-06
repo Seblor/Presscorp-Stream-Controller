@@ -2,14 +2,26 @@
   import { get } from "svelte/store";
   import discordBot from "../../connections/DiscordBot";
   import obsConnector from "../../connections/OBS";
-
-  import { appSettings } from "../../settings";
+  import { appSettings } from "../../stores/settings";
   import Tooltip from "../tooltip.svelte";
+  import debounce from "lodash/debounce";
 
   const roles: Array<{ id: string; name: string; color: string }> = $state([]);
   const scenes: Array<{ uuid: string; name: string }> = $state(
     get(obsConnector.scenes),
   );
+
+  const updateRoles = debounce(async () => {
+    roles.splice(0, roles.length, ...(await discordBot.getRoles()));
+  }, 500);
+
+  discordBot.isLoggedIn.subscribe(async (isLoggedIn) => {
+    updateRoles();
+  });
+
+  appSettings.subscribe(async (settings) => {
+    updateRoles();
+  });
 
   obsConnector.scenes.subscribe((newScenes) => {
     if (newScenes.length === 0) return;
@@ -36,12 +48,14 @@
     scenes.splice(0, scenes.length, ...newScenes);
   });
 
-  discordBot.onLogin(async () => {
-    roles.splice(0, roles.length, ...(await discordBot.getRoles()));
+  discordBot.isLoggedIn.subscribe(async (value) => {
+    if (value) {
+      updateRoles();
+    }
   });
 
   discordBot.onRolechanged(async () => {
-    roles.splice(0, roles.length, ...(await discordBot.getRoles()));
+    updateRoles();
   });
 </script>
 
@@ -51,7 +65,12 @@
   <div class="flex justify-between m-2 gap-2">
     <div class="flex flex-col gap-2 justify-end text-end">
       <div>
-        Bot role:
+        <Tooltip
+          class="inline"
+          title="Every Discord member with this role will be ignored by this app."
+        >
+          Bot role:
+        </Tooltip>
         <select
           bind:value={$appSettings.botRole}
           class="bg-slate-600 rounded w-32"

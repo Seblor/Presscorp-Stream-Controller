@@ -1,17 +1,16 @@
 import { VoiceConnection, type DiscordGatewayAdapterCreator } from "@discordjs/voice";
-import { type Client, type VoiceBasedChannel } from "discord.js";
+import { type Client, type GuildBasedChannel, type VoiceBasedChannel } from "discord.js";
+import { get, writable } from "svelte/store";
+import { appSettings } from "../stores/settings";
 const Discord = require("discord.js") as typeof import("discord.js");
 const DiscordVoice = require("@discordjs/voice") as typeof import("@discordjs/voice");
 
 export class DiscordBot {
   private readonly client: Client;
-  isLoggedIn: boolean = false;
+  isLoggedIn = writable(false);
 
   voiceConnection: VoiceConnection | null = null;
   peopleSpeaking: Record<string, boolean> = {};
-
-  waitForLoggedIn: Promise<void> = new Promise(() => { });
-  private loggedInResolver: () => void = () => { };
 
   private readonly eventListeners = {
     'onLogin': [] as Array<() => void>,
@@ -103,17 +102,16 @@ export class DiscordBot {
   }
 
   async login (token: string) {
-    this.waitForLoggedIn = new Promise((resolve) => {
-      this.loggedInResolver = resolve;
-    });
     await this.client.login(token);
     await Promise.all([...(await this.client.guilds.fetch()).mapValues((guild) => guild.fetch()).values()]);
-    this.isLoggedIn = true;
-    this.loggedInResolver();
+    this.isLoggedIn.set(true);
     this.eventListeners.onLogin.forEach((callback) => callback());
   }
 
-  disconnect () {
+  async disconnect () {
+    const roles = await this.getRoles();
+    this.eventListeners.onRolesChange.forEach((callback) => callback(roles));
+    this.isLoggedIn.set(false);
     return this.client.destroy();
   }
 
@@ -170,7 +168,7 @@ export class DiscordBot {
   }
 
   getBotData () {
-    if (!this.isLoggedIn) {
+    if (!get(this.isLoggedIn)) {
       return {
         name: "Unknown",
         iconUrl: "",
@@ -194,7 +192,7 @@ export class DiscordBot {
   }
 
   onLogin (callback: () => void) {
-    if (this.isLoggedIn) {
+    if (get(this.isLoggedIn)) {
       callback();
       return;
     }
@@ -218,8 +216,10 @@ export class DiscordBot {
   }
 
   async getRoles (guildId?: string): Promise<Array<{ id: string, name: string, color: string }>> {
-    await this.waitForLoggedIn;
-    const guild = this.client.guilds.cache.get(guildId || this.voiceConnection.joinConfig.guildId)
+    if (get(this.isLoggedIn) === false) {
+      return []
+    }
+    const guild = this.client.guilds.cache.get(guildId || (this.client.channels.cache.get(get(appSettings).selectedChannelId) as GuildBasedChannel)?.guildId || '')
 
     if (!guild) {
       return Promise.resolve([]);
@@ -234,7 +234,6 @@ export class DiscordBot {
   }
 
   async botHasRole (roleId: string): Promise<boolean> {
-    await this.waitForLoggedIn;
     const guild = this.client.guilds.cache.get(this.voiceConnection?.joinConfig.guildId || '');
     if (!guild) {
       return false;

@@ -39,7 +39,7 @@
         <div onclick={toggleExpansion} class="">
           <div class="flex">
             <div class="flex flex-col justify-center">
-              <span class="arrow" class:arrowDown>&#x25b6</span>
+              <span class="arrow text-2xl" class:arrowDown>&#x25b6</span>
             </div>
             {#if tree.img}
               <img class="w-12 rounded-full mx-2" src={tree.img} alt="">

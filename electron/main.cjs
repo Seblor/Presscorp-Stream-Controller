@@ -23,14 +23,14 @@ const createWindow = () => {
   mainWindow = new BrowserWindow({
     width: 1300,
     height: 600,
+    icon: path.join(__dirname, 'public', 'favicon.ico'),
+    autoHideMenuBar: true,
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,
       preload: path.join(__dirname, 'preload.cjs')
     }
   })
-
-  addFocusFix(mainWindow);
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url);
@@ -57,33 +57,6 @@ const createWindow = () => {
 
     log('Electron running in prod mode: 🚀')
   }
-}
-
-const isWindows = process.platform === 'win32';
-let needsFocusFix = false;
-let triggeringProgrammaticBlur = false;
-
-function addFocusFix (win) {
-
-  win.on('blur', (event) => {
-    if (!triggeringProgrammaticBlur) {
-      needsFocusFix = true;
-    }
-  })
-
-  win.on('focus', (event) => {
-    if (isWindows && needsFocusFix) {
-      needsFocusFix = false;
-      triggeringProgrammaticBlur = true;
-      setTimeout(function () {
-        win.blur();
-        win.focus();
-        setTimeout(function () {
-          triggeringProgrammaticBlur = false;
-        }, 100);
-      }, 100);
-    }
-  })
 }
 
 // This method will be called when Electron has finished

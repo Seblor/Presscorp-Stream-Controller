@@ -5,7 +5,8 @@
   import MusicIcon from "virtual:icons/mdi/music";
   import VolumeSlider from "../VolumeSlider.svelte";
   import isEqual from "lodash/isEqual";
-    import { appSettings } from "../../settings";
+  import { appSettings } from "../../stores/settings";
+  import Tooltip from "../tooltip.svelte";
 
   const volumeMeters: {
     inputs: Array<{
@@ -44,9 +45,13 @@
   const inputState: Record<string, { volume: number; isMuted: boolean }> =
     $state({});
 
-  async function main() {
-    await obsConnector.loginPromise;
+  obsConnector.isLoggedIn.subscribe((isLoggedIn) => {
+    if (isLoggedIn) {
+      main();
+    }
+  });
 
+  async function main() {
     obsConnector.obs.addListener("InputVolumeMeters", (data) => {
       volumeMeters.inputs = data.inputs as typeof volumeMeters.inputs;
       const newUuids = volumeMeters.inputs.map((input) => input.inputUuid);
@@ -109,9 +114,10 @@
 
   function addToBackgroundInputs(inputUuid: string) {
     if ($appSettings.inputsToMuteOnSpeaking.includes(inputUuid)) {
-      $appSettings.inputsToMuteOnSpeaking = $appSettings.inputsToMuteOnSpeaking.filter(
-        (uuid) => uuid !== inputUuid
-      );
+      $appSettings.inputsToMuteOnSpeaking =
+        $appSettings.inputsToMuteOnSpeaking.filter(
+          (uuid) => uuid !== inputUuid,
+        );
     } else {
       $appSettings.inputsToMuteOnSpeaking = [
         ...$appSettings.inputsToMuteOnSpeaking,
@@ -119,8 +125,6 @@
       ];
     }
   }
-
-  main();
 </script>
 
 <div class="h-full pb-16">
@@ -132,10 +136,21 @@
     {#each volumeMeters.inputs as input}
       <div class="flex bg-slate-700 rounded-xl m-2">
         <div
-        onclick={() => addToBackgroundInputs(input.inputUuid)}
-        class="flex justify-center items-center w-12 rounded-full cursor-pointer"
+          onclick={() => addToBackgroundInputs(input.inputUuid)}
+          class="flex justify-center items-center w-12 rounded-full cursor-pointer"
         >
-          <MusicIcon class={!$appSettings.inputsToMuteOnSpeaking.includes(input.inputUuid) ? 'opacity-25': ''} />
+          <Tooltip
+            class="size-full flex justify-center items-center rounded-full"
+            title="Set input as background (volume will be reduced when someone is speaking)"
+          >
+            <MusicIcon
+              class={!$appSettings.inputsToMuteOnSpeaking.includes(
+                input.inputUuid,
+              )
+                ? "opacity-25"
+                : ""}
+            />
+          </Tooltip>
         </div>
         <div class="flex justify-center items-center w-12">
           {#if inputState[input.inputUuid]?.isMuted}

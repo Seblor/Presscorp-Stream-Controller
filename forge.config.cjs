@@ -20,7 +20,7 @@ module.exports = {
         icon: iconPath,
         authors: 'Sébastien "Seblor" Lorentz',
         description: 'Presscorp Stream Controller',
-        setupExe: 'presscord-stream-controller.exe',
+        setupExe: 'Presscorp Stream Controller.exe',
       },
     },
     {

@@ -1,5 +1,6 @@
 <script>
   import { createEventDispatcher } from "svelte";
+  import { discordToken } from "../stores/credentials";
 
   let { botName = "", botIcon = "" } = $props();
 
@@ -7,14 +8,12 @@
 
   function handleReset() {
     if (confirm("Are you sure you want to disconnect?")) {
-      dispatch("resetToken");
+      discordToken.set("");
     }
   }
 </script>
 
-<div
-  class="p-6 size-full flex items-center justify-between"
->
+<div class="p-6 size-full flex items-center justify-between">
   <div class="flex items-center space-x-4">
     {#if botIcon}
       <img

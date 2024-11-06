@@ -3,6 +3,7 @@ import { writable } from "svelte/store";
 const storedSettings = localStorage.getItem('appSettings')
 
 export const appSettings = writable<{
+  selectedChannelId: string,
   botRole: string,
   recordingGracePeriodSeconds: number,
   defaultSceneUuid: string,
@@ -11,16 +12,24 @@ export const appSettings = writable<{
   backgroundVolumeSilence: number,
   inputsToMuteOnSpeaking: Array<string>,
 }>({
+  selectedChannelId: "",
   botRole: "",
-  recordingGracePeriodSeconds: 5000,
+  recordingGracePeriodSeconds: 5,
   defaultSceneUuid: "",
   memberStreamSceneUuid: "",
-  backgroundVolumeSpeaking: 1,
-  backgroundVolumeSilence: 0.5,
+  backgroundVolumeSpeaking: 0.5,
+  backgroundVolumeSilence: 1,
   inputsToMuteOnSpeaking: [],
   ...storedSettings ? JSON.parse(storedSettings) : {}
 })
 
 appSettings.subscribe((value) => {
+  if (value.selectedChannelId === '' && value.botRole !== '') {
+    appSettings.update((settings) => {
+      settings.botRole = '';
+      return settings;
+    })
+  }
+
   localStorage.setItem('appSettings', JSON.stringify(value));
 })

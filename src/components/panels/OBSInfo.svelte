@@ -1,14 +1,12 @@
 <script lang="ts">
   import ObsCredentialForm from "../OBSCredentialForm.svelte";
   import obsConnector from "../../connections/OBS";
-    import ObsStatus from "../OBSStatus.svelte";
+  import ObsStatus from "../OBSStatus.svelte";
+  import { obsCredentials } from "../../stores/credentials";
+  import { get } from "svelte/store";
 
   let websocketUrl = localStorage.getItem("obsWebsocketPort") || "";
   let password = localStorage.getItem("obsWebsockePassword") || "";
-
-  if (websocketUrl && password) {
-    obsConnector.login(websocketUrl, password);
-  }
 
   let isObsConnected = $state(false);
 
