@@ -35,7 +35,7 @@
             <Tooltip
               title="A user script that opens a stream when it is detected"
             >
-              <a href="/presscorp-stream-controller.user.js" target="_blank">
+              <a href="http://localhost:4445/presscorp-stream-controller.user.js" target="_blank">
                 <ScriptIcon class="size-8" />
               </a>
             </Tooltip>

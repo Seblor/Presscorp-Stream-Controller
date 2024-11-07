@@ -8,11 +8,20 @@
   import BrowserStatus from "./components/panels/BrowserStatus.svelte";
   import "./connections/Browser";
   import "./lib/DialogUtils";
+  import { checkForUpdate } from "./lib/UpdateChecker";
 
   let isBotReady = $state(false);
 
   discordBot.isLoggedIn.subscribe((value) => {
     isBotReady = value;
+  });
+
+  let newUpdateAvailable = $state(false);
+  let newUpdateVersion = $state("");
+
+  checkForUpdate().then((update) => {
+    newUpdateAvailable = update.newUpdateAvailable;
+    newUpdateVersion = update.latestUpdateVersion;
   });
 
   // const nodeVersion = api.node();
@@ -60,17 +69,23 @@
   <!-- Footer -->
   <footer class="footer bg-gray-950 bottom-0 left-0 w-full h-14 py-2">
     <div class="flex justify-between items-center mx-6">
-      <p class="flex-auto text-xs font-light">Made with 🧡 by Seblor</p>
-
-      <a
-        target="_blank"
-        rel="noreferrer"
-        href="https://ko-fi.com/Seblor"
-        class="text-xs flex items-center py-1 px-4 bg-gray-800 hover:bg-indigo-700 text-white
-				transition ease-in duration-200 text-center shadow-md focus:outline-none rounded-md"
-      >
-        Buy me a coffee <span class="ml-3 text-2xl">☕️</span>
-      </a>
+      <p class="text-xs font-light">Made with 🧡 by Seblor</p>
+      {#if newUpdateAvailable}
+        <p class="text-xs font-light">
+          <a href="https://github.com/Seblor/presscorp-stream-controller/releases/latest" target="_blank">New update available: {newUpdateVersion}</a>
+        </p>
+      {/if}
+      <p>
+        <a
+          target="_blank"
+          rel="noreferrer"
+          href="https://ko-fi.com/Seblor"
+          class="text-xs flex items-center py-1 px-4 bg-gray-800 hover:bg-indigo-700 text-white
+      transition ease-in duration-200 text-center shadow-md focus:outline-none rounded-md"
+        >
+          Buy me a coffee <span class="ml-3 text-2xl">☕️</span>
+        </a>
+      </p>
     </div>
   </footer>
 </main>

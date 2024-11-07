@@ -2,8 +2,11 @@
 const { log } = require('console')
 const { app, BrowserWindow, shell } = require('electron')
 const path = require('path')
+const http = require('http');
+const fs = require('fs');
 const remoteModule = require('@electron/remote/main')
 remoteModule.initialize()
+
 
 if (require('electron-squirrel-startup')) app.quit();
 
@@ -84,3 +87,14 @@ app.on('activate', () => {
 
 // In this file you can include the rest of your app's specific main process
 // code. You can also put them in separate files and require them here.
+
+
+const httpServer = http.createServer((req, res) => {
+  res.writeHead(200, { 'Content-Type': 'text/plain' });
+  if (req.url === '/presscorp-stream-controller.user.js') {
+    console.log(path.join(__dirname, 'public', 'presscorp-stream-controller.user.js'));
+    res.end(fs.readFileSync(path.join(__dirname, '..', 'public', 'presscorp-stream-controller.user.js'), 'utf8'));
+  }
+});
+
+httpServer.listen(4445);
