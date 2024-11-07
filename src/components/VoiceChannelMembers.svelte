@@ -2,17 +2,23 @@
   import discordBot from "../connections/DiscordBot";
   import mutedIcon from "../assets/mutedIcon.svg";
   import streamingIcon from "../assets/streamingIcon.svg";
+  import MicrophoneIcon from "virtual:icons/mdi/microphone-variant";
   import { appSettings } from "../stores/settings";
   import obsConnector from "../connections/OBS";
   import debounce from "lodash/debounce";
   import { openStream } from "../connections/Browser";
 
   let botRole = $state("");
+  let casterRole = $state("");
   let isSomeoneSpeaking = $state(false);
   let isSomeoneStreaming = $state(false);
 
   appSettings.subscribe((settings) => {
     botRole = settings.botRole;
+  });
+
+  appSettings.subscribe((settings) => {
+    casterRole = settings.casterRole;
   });
 
   const voiceMembers: {
@@ -66,7 +72,7 @@
       $appSettings.inputsToMuteOnSpeaking,
       $appSettings.backgroundVolumeSilence,
     );
-  }, 5e3);
+  }, $appSettings.backgroundMuteDelaySeconds * 1000);
 
   function updateMembersList(newList: typeof voiceMembers) {
     voiceMembers.splice(0, voiceMembers.length, ...newList);
@@ -86,7 +92,7 @@
       isSomeoneStreaming = Boolean(streamingMember);
       if (isSomeoneStreaming) {
         openStream(streamingMember.name).then(() => {
-          obsConnector.changeScene($appSettings.memberStreamSceneUuid);
+          obsConnector.changeScene($appSettings.memberStreamAudioSceneUuid);
         });
       } else {
         obsConnector.changeScene($appSettings.defaultSceneUuid);
@@ -98,28 +104,35 @@
 <div class="flex flex-col">
   {#each voiceMembers as member}
     <div
-      class={`flex items-center p-2 relative ${member.roles.includes(botRole) ? "opacity-30" : ""}`}
+      class={`flex items-center p-2 rounded mx-2 ${member.roles.includes(botRole) ? "opacity-30" : ""} ${member.roles.includes(casterRole) ? "bg-slate-600" : ""}`}
     >
-      <img
-        class="w-8 h-8 rounded-full"
-        src={member.iconUrl}
-        alt={member.name}
-      />
-      <div
-        class={`absolute w-8 h-8 rounded-full ${speakingMembers.includes(member.id) ? "border-2 border-green-500" : ""}`}
-      ></div>
-      <div class="flex ml-2 gap-2">
-        <p>{member.name}</p>
-        {#if member.isMuted}
-          <img
-            src={mutedIcon}
-            alt="voice channel icon"
-            class="mr-1 text-white"
-          />
+      <div class="flex items-center h-6 w-6 mr-2">
+        {#if member.roles.includes(casterRole)}
+          <MicrophoneIcon class="h-6 w-6" />
         {/if}
-        {#if member.isStreaming}
-          <img src={streamingIcon} alt="voice channel icon" class="mr-1" />
-        {/if}
+      </div>
+      <div class="flex items-center relative">
+        <img
+          class="w-8 h-8 rounded-full"
+          src={member.iconUrl}
+          alt={member.name}
+        />
+        <div
+          class={`absolute w-8 h-8 rounded-full ${speakingMembers.includes(member.id) ? "border-2 border-green-500" : ""}`}
+        ></div>
+        <div class="flex ml-2 gap-2">
+          <p>{member.name}</p>
+          {#if member.isMuted}
+            <img
+              src={mutedIcon}
+              alt="voice channel icon"
+              class="mr-1 text-white"
+            />
+          {/if}
+          {#if member.isStreaming}
+            <img src={streamingIcon} alt="voice channel icon" class="mr-1" />
+          {/if}
+        </div>
       </div>
     </div>
   {/each}

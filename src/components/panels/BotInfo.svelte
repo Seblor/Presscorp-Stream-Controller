@@ -34,7 +34,7 @@
 
 <div class="size-full flex flex-col">
   <h1 class="py-2 text-center">Discord</h1>
-  <hr class="mx-2 pb-2" />
+  <hr class="mx-2" />
   {#if $discordToken}
     <BotInfoDisplay {botName} {botIcon} />
   {:else}

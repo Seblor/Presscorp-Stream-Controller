@@ -6,8 +6,8 @@
   import SettingsPanel from "./components/panels/SettingsPanel.svelte";
   import ObsInfo from "./components/panels/OBSInfo.svelte";
   import BrowserStatus from "./components/panels/BrowserStatus.svelte";
-  import './connections/Browser'
-  import './lib/DialogUtils'
+  import "./connections/Browser";
+  import "./lib/DialogUtils";
 
   let isBotReady = $state(false);
 
@@ -42,11 +42,11 @@
     {#if isBotReady}
       <VoiceChannelPanel />
     {:else}
-      <div class="px-4">
+      <div>
         <h1 class="py-2 text-xl text-center">
           Waiting for a Discord bot connection
         </h1>
-        <hr />
+        <hr class="mx-2 pb-2" />
       </div>
     {/if}
   </div>
@@ -84,6 +84,10 @@
     --tw-shadow-colored: 0 25px 50px -12px var(--tw-shadow-color);
     box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000),
       var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
+  }
+
+  div {
+    cursor: default;
   }
 
   .container {

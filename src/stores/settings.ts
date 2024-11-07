@@ -1,24 +1,32 @@
-import { writable } from "svelte/store";
+import { get, writable } from "svelte/store";
 
-const storedSettings = localStorage.getItem('appSettings')
+const storedSettings = localStorage.getItem('appSettings');
 
 export const appSettings = writable<{
   selectedChannelId: string,
   botRole: string,
+  casterRole: string,
   recordingGracePeriodSeconds: number,
   defaultSceneUuid: string,
-  memberStreamSceneUuid: string,
+  memberStreamVideoSceneUuid: string,
+  memberStreamAudioSceneUuid: string,
+  defaultSceneOnStream: 'video' | 'audio',
   backgroundVolumeSpeaking: number,
   backgroundVolumeSilence: number,
+  backgroundMuteDelaySeconds: number,
   inputsToMuteOnSpeaking: Array<string>,
 }>({
   selectedChannelId: "",
   botRole: "",
+  casterRole: "",
   recordingGracePeriodSeconds: 5,
   defaultSceneUuid: "",
-  memberStreamSceneUuid: "",
+  memberStreamVideoSceneUuid: '',
+  memberStreamAudioSceneUuid: '',
+  defaultSceneOnStream: 'video',
   backgroundVolumeSpeaking: 0.5,
   backgroundVolumeSilence: 1,
+  backgroundMuteDelaySeconds: 5,
   inputsToMuteOnSpeaking: [],
   ...storedSettings ? JSON.parse(storedSettings) : {}
 })
@@ -33,3 +41,21 @@ appSettings.subscribe((value) => {
 
   localStorage.setItem('appSettings', JSON.stringify(value));
 })
+
+const migrations: Array<Function> = [
+  () => {
+    if (Object.hasOwn(get(appSettings), 'memberStreamSceneUuid')) {
+      appSettings.update((settings) => {
+        settings.memberStreamVideoSceneUuid = settings['memberStreamSceneUuid'];
+        delete settings['memberStreamSceneUuid'];
+        return settings
+      })
+    }
+  }
+];
+
+function applyMigrations () {
+  migrations.forEach((migration) => migration());
+}
+
+applyMigrations();

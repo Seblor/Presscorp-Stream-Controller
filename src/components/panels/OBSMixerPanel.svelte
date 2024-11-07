@@ -129,7 +129,7 @@
 
 <div class="h-full pb-16">
   <h1 class="text-xl text-center py-2">OBS Mixer</h1>
-  <hr class="mx-4 mb-2" />
+  <hr class="mx-2" />
   <div class="h-full overflow-auto">
     <!-- svelte-ignore a11y_no_static_element_interactions -->
     <!-- svelte-ignore a11y_click_events_have_key_events -->

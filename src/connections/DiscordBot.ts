@@ -1,10 +1,32 @@
 import { VoiceConnection, type DiscordGatewayAdapterCreator } from "@discordjs/voice";
-import { type Client, type GuildBasedChannel, type VoiceBasedChannel } from "discord.js";
+import { CommandInteraction, type Client, type GuildBasedChannel, type VoiceBasedChannel } from "discord.js";
 import { get, writable } from "svelte/store";
 import { appSettings } from "../stores/settings";
 import obsConnector from "./OBS";
 const Discord = require("discord.js") as typeof import("discord.js");
 const DiscordVoice = require("@discordjs/voice") as typeof import("@discordjs/voice");
+
+const SLASH_COMMANDS = {
+  startRecording: {
+    id: 'start-recording',
+  },
+  stopRecording: {
+    id: 'stop-recording',
+  },
+  changeScene: {
+    id: 'change-scene',
+    options: {
+      scene: {
+        id: 'scene',
+        values: {
+          default: 'default',
+          audio: 'audio',
+          video: 'video',
+        }
+      }
+    },
+  },
+}
 
 export class DiscordBot {
   private readonly client: Client;
@@ -50,6 +72,23 @@ export class DiscordBot {
 
       if (!guild || interaction.guildId !== guild.id) {
         return;
+      }
+
+      switch (interaction.commandName) {
+        case SLASH_COMMANDS.startRecording.id:
+          interaction.reply('Recording started');
+          break;
+
+        case SLASH_COMMANDS.stopRecording.id:
+          interaction.reply('Recording stopped');
+          break;
+
+        case SLASH_COMMANDS.changeScene.id:
+          this.handleSceneChangeCommand(interaction);
+          break;
+
+        default:
+          break;
       }
 
       if (interaction.commandName === 'start-recording') {
@@ -136,6 +175,51 @@ export class DiscordBot {
     })
   }
 
+  handleSceneChangeCommand (inter: CommandInteraction) {
+    if (!inter.isChatInputCommand() || inter.commandName !== SLASH_COMMANDS.changeScene.id) {
+      return;
+    }
+
+    const userRoles = Array.isArray(inter.member.roles) ? inter.member.roles : [...inter.member.roles.cache.keys()];
+
+    if (userRoles.includes(get(appSettings).casterRole) === false) {
+      return inter.reply('You do not have permission to change scenes');
+    }
+
+    const peopleInVoiceChannel = this.getCurrentVoiceChannelMembers();
+
+    if (!peopleInVoiceChannel.some((person) => person.isStreaming)) {
+      return inter.reply('No one is streaming');
+    }
+
+    const chosenScene = inter.options.getString(SLASH_COMMANDS.changeScene.options.scene.id) as keyof typeof SLASH_COMMANDS.changeScene.options.scene.values;
+
+    let sceneToChangeTo: string | undefined;
+    switch (chosenScene) {
+      case 'audio':
+        sceneToChangeTo = get(appSettings).memberStreamAudioSceneUuid;
+        break;
+      
+      case 'video':
+        sceneToChangeTo = get(appSettings).memberStreamVideoSceneUuid;
+        break;
+      
+      case 'default':
+        sceneToChangeTo = get(appSettings).defaultSceneUuid;
+        break;
+      default:
+        return inter.reply('Invalid scene');
+    }
+
+    if (!sceneToChangeTo) {
+      return inter.reply('Scene not set');
+    }
+
+    inter.reply('Scene changed');
+
+    return obsConnector.changeScene(sceneToChangeTo);
+  }
+
   async login (token: string) {
     await this.client.login(token);
     await Promise.all([...(await this.client.guilds.fetch()).mapValues((guild) => guild.fetch()).values()]);
@@ -157,8 +241,38 @@ export class DiscordBot {
     }
 
     await channel.guild.commands.set([
-      new Discord.SlashCommandBuilder().setName('start-recording').setDescription('start recording').setDefaultMemberPermissions(Discord.PermissionFlagsBits.ManageGuild),
-      new Discord.SlashCommandBuilder().setName('stop-recording').setDescription('stop recording').setDefaultMemberPermissions(Discord.PermissionFlagsBits.ManageGuild),
+      new Discord.SlashCommandBuilder()
+        .setName(SLASH_COMMANDS.startRecording.id)
+        .setDescription('start recording')
+        .setDefaultMemberPermissions(Discord.PermissionFlagsBits.MoveMembers),
+      new Discord.SlashCommandBuilder()
+        .setName(SLASH_COMMANDS.stopRecording.id)
+        .setDescription('stop recording')
+        .setDefaultMemberPermissions(Discord.PermissionFlagsBits.MoveMembers),
+      new Discord.SlashCommandBuilder()
+        .setName(SLASH_COMMANDS.changeScene.id)
+        .setDescription('Changes the scene when a member is streaming')
+        .addStringOption((option) =>
+          option
+            .setName(SLASH_COMMANDS.changeScene.options.scene.id)
+            .setDescription('The scene to change to')
+            .setRequired(true)
+            .addChoices([
+              {
+                name: 'Default',
+                value: SLASH_COMMANDS.changeScene.options.scene.values.default,
+              },
+              {
+                name: 'Audio Scene',
+                value: SLASH_COMMANDS.changeScene.options.scene.values.audio,
+              },
+              {
+                name: 'Video Scene',
+                value: SLASH_COMMANDS.changeScene.options.scene.values.video,
+              },
+            ])
+        )
+        .setDefaultMemberPermissions(Discord.PermissionFlagsBits.MoveMembers),
     ])
 
     this.voiceConnection = DiscordVoice.joinVoiceChannel({

@@ -27,7 +27,7 @@
     if (newScenes.length === 0) return;
 
     const defaultScene = $appSettings.defaultSceneUuid;
-    const memberStreamScene = $appSettings.memberStreamSceneUuid;
+    const memberStreamScene = $appSettings.memberStreamVideoSceneUuid;
 
     if (newScenes.find((scene) => scene.uuid === defaultScene) === undefined) {
       appSettings.update((settings) => {
@@ -40,7 +40,7 @@
       newScenes.find((scene) => scene.uuid === memberStreamScene) === undefined
     ) {
       appSettings.update((settings) => {
-        settings.memberStreamSceneUuid = "";
+        settings.memberStreamVideoSceneUuid = "";
         return settings;
       });
     }
@@ -61,13 +61,32 @@
 
 <div class="h-full">
   <h1 class="text-xl text-center py-2">Settings</h1>
-  <hr class="mx-4 mb-2" />
-  <div class="flex justify-between m-2 gap-2">
+  <hr class="mx-2" />
+  <div class="flex justify-evenly m-2 gap-2">
     <div class="flex flex-col gap-2 justify-end text-end">
       <div>
         <Tooltip
           class="inline"
+          title="Members with this role will be able to use the slash commands."
+        >
+          Caster role:
+        </Tooltip>
+        <select
+          bind:value={$appSettings.casterRole}
+          class="bg-slate-600 rounded w-32"
+        >
+          {#each roles as role}
+            <option
+              style={`background-color: ${role.color ?? "rgb(71 85 105)"};`}
+              value={role.id}>{role.name}</option
+            >
+          {/each}
+        </select>
+      </div>
+      <div>
+        <Tooltip
           title="Every Discord member with this role will be ignored by this app."
+          class="inline"
         >
           Bot role:
         </Tooltip>
@@ -114,14 +133,31 @@
       </div>
       <div class="flex gap-2">
         <Tooltip
-          title="The scene to switch to when <b>someone</b> is streaming on Discord."
+          title="The scene to switch to when <b>someone</b> is streaming on Discord and you want to share the <b>audio</b>.<br>This scene will be automatically switched to when a voicechat member starts streaming."
         >
-          Streaming scene:
+          Discord audio scene:
         </Tooltip>
         <select
-          bind:value={$appSettings.memberStreamSceneUuid}
+          bind:value={$appSettings.memberStreamAudioSceneUuid}
           class="bg-slate-600 rounded w-32"
         >
+          <option value=""></option>
+          {#each scenes as scene}
+            <option value={scene.uuid}>{scene.name}</option>
+          {/each}
+        </select>
+      </div>
+      <div class="flex gap-2">
+        <Tooltip
+          title="The scene to switch to when <b>someone</b> is streaming on Discord and you want to share the <b>video</b>."
+        >
+          Discord video scene:
+        </Tooltip>
+        <select
+          bind:value={$appSettings.memberStreamVideoSceneUuid}
+          class="bg-slate-600 rounded w-32"
+        >
+          <option value=""></option>
           {#each scenes as scene}
             <option value={scene.uuid}>{scene.name}</option>
           {/each}
@@ -151,6 +187,18 @@
           type="number"
           bind:value={$appSettings.backgroundVolumeSilence}
           class="bg-slate-600 rounded w-16 text-center"
+        />
+      </div>
+      <div class="flex gap-2">
+        <Tooltip
+          title="The grace period after the last person stops speaking before the background tracks restore their volume."
+        >
+          <span>Background mute delay (seconds):</span>
+        </Tooltip>
+        <input
+          type="number"
+          bind:value={$appSettings.backgroundMuteDelaySeconds}
+          class="bg-slate-600 rounded w-12 text-center"
         />
       </div>
     </div>

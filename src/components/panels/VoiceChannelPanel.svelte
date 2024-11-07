@@ -82,7 +82,7 @@
         class="cursor-pointer text-xl absolute top-1/2 -translate-y-1/2 right-0 -translate-x-1/2 text-red-500"
       />
     </div>
-    <hr class="mx-4 mb-2" />
+    <hr class="mx-2 pb-2" />
     <VoiceChannelMembers />
   {:else}
     <h1 class="text-xl text-center py-2">Choose a voice channel</h1>

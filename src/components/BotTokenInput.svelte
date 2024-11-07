@@ -9,7 +9,7 @@
   }
 </script>
 
-<div class="p-6 rounded-lg shadow-lg">
+<div class="p-4 rounded-lg shadow-lg">
   <form
     onsubmit={preventDefault(handleSubmit)}
     class="flex items-center space-x-4"
