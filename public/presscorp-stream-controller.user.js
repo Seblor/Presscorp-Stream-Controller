@@ -12,6 +12,14 @@
 (function () {
   'use strict';
 
+  function attempt(fct, delay, maxAttempts) {
+    let attempts = 0;
+    const interval = setInterval(() => {
+      if (fct() || ++attempts === maxAttempts) {
+        clearInterval(interval);
+      }
+    }, delay);
+  }
 
   function createWebSocket () {
     const socket = new WebSocket('ws://127.0.0.1:4444');
@@ -24,16 +32,23 @@
       socket.addEventListener('message', (event) => {
         const message = JSON.parse(event.data);
         if (message.type === 'openStream') {
-          setTimeout(() => {
-            [...document.querySelectorAll("div[class^='voiceUser']")].filter(el => el.textContent.includes('Live') && el.textContent.includes(message.userName))[0].click()
-          }, 500)
-          setTimeout(() => {
+          attempt(() => {
+            const el = [...document.querySelectorAll("div[class^='voiceUser']")].filter(el => el.textContent.includes('Live') && el.textContent.includes(message.userName))[0]
+            if (el) {
+              el.click()
+              return true
+            }
+            return false;
+          }, 100, 10)
+          attempt(() => {
             const previewElement = document.querySelector("div[class^='preview']")
             if (previewElement) {
               previewElement.click();
               socket.send('success');
+              return true;
             }
-          }, 500)
+            return false;
+          }, 100, 20)
         }
       });
 

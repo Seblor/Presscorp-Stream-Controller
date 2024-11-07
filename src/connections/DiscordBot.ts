@@ -74,6 +74,15 @@ export class DiscordBot {
         return;
       }
 
+      const userRoles = Array.isArray(interaction.member.roles) ? interaction.member.roles : [...interaction.member.roles.cache.keys()];
+  
+      if (userRoles.includes(get(appSettings).casterRole) === false) {
+        return interaction.reply({
+          content: 'You do not have the permissions to use this command',
+          ephemeral: true,
+        });
+      }
+
       switch (interaction.commandName) {
         case SLASH_COMMANDS.startRecording.id:
           interaction.reply('Recording started');
@@ -178,12 +187,6 @@ export class DiscordBot {
   handleSceneChangeCommand (inter: CommandInteraction) {
     if (!inter.isChatInputCommand() || inter.commandName !== SLASH_COMMANDS.changeScene.id) {
       return;
-    }
-
-    const userRoles = Array.isArray(inter.member.roles) ? inter.member.roles : [...inter.member.roles.cache.keys()];
-
-    if (userRoles.includes(get(appSettings).casterRole) === false) {
-      return inter.reply('You do not have permission to change scenes');
     }
 
     const peopleInVoiceChannel = this.getCurrentVoiceChannelMembers();
