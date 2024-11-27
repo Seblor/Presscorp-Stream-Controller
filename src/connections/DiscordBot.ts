@@ -15,13 +15,25 @@ const SLASH_COMMANDS = {
   },
   changeScene: {
     id: 'change-scene',
-    options: {
+    subcommand: {
       scene: {
         id: 'scene',
         values: {
-          default: 'default',
-          audio: 'audio',
-          video: 'video',
+          default: {
+            name: 'default',
+          },
+          audio: {
+            name: 'audio',
+          },
+          video: {
+            name: 'video',
+          },
+          custom: {
+            name: 'custom',
+            options: {
+              scene: 'scene',
+            },
+          },
         }
       }
     },
@@ -64,6 +76,21 @@ export class DiscordBot {
     });
 
     this.client.on("interactionCreate", async (interaction) => {
+      if (
+        interaction.isAutocomplete()
+        && interaction.commandName === SLASH_COMMANDS.changeScene.id
+        && interaction.options.getSubcommand() === SLASH_COMMANDS.changeScene.subcommand.scene.values.custom.name
+      ) {
+        const userValue = interaction.options.getFocused();
+        const matchingScenes = get(obsConnector.scenes).filter((scene) => {
+          return scene.name.toLowerCase().includes(userValue.toLowerCase())
+        });
+
+        interaction.respond(matchingScenes.map((scene) => ({
+          name: scene.name,
+          value: scene.name,
+        })));
+      }
       if (!interaction.isCommand()) {
         return;
       }
@@ -75,7 +102,7 @@ export class DiscordBot {
       }
 
       const userRoles = Array.isArray(interaction.member.roles) ? interaction.member.roles : [...interaction.member.roles.cache.keys()];
-  
+
       if (userRoles.includes(get(appSettings).casterRole) === false) {
         return interaction.reply({
           content: 'You do not have the permissions to use this command',
@@ -189,36 +216,46 @@ export class DiscordBot {
       return;
     }
 
+    const chosenScene = inter.options.getSubcommand() as keyof typeof SLASH_COMMANDS.changeScene.subcommand.scene.values;
+
     const peopleInVoiceChannel = this.getCurrentVoiceChannelMembers();
 
-    if (!peopleInVoiceChannel.some((person) => person.isStreaming)) {
+    const doesSceneRequireStreamingMember = chosenScene === 'audio' || chosenScene === 'video'
+    if (doesSceneRequireStreamingMember && !peopleInVoiceChannel.some((person) => person.isStreaming)) {
       return inter.reply('No one is streaming');
     }
 
-    const chosenScene = inter.options.getString(SLASH_COMMANDS.changeScene.options.scene.id) as keyof typeof SLASH_COMMANDS.changeScene.options.scene.values;
-
     let sceneToChangeTo: string | undefined;
+    let targetSceneName: string;
     switch (chosenScene) {
       case 'audio':
         sceneToChangeTo = get(appSettings).memberStreamAudioSceneUuid;
+        targetSceneName = 'configured audio scene';
         break;
-      
+
       case 'video':
         sceneToChangeTo = get(appSettings).memberStreamVideoSceneUuid;
+        targetSceneName = 'configured video scene';
         break;
-      
+
       case 'default':
         sceneToChangeTo = get(appSettings).defaultSceneUuid;
+        targetSceneName = 'configured default scene';
         break;
+      case 'custom':
+        sceneToChangeTo = get(obsConnector.scenes).find((scene) => scene.name === inter.options.getString(SLASH_COMMANDS.changeScene.subcommand.scene.id))?.uuid ?? undefined;
+        targetSceneName = `scene named \`${inter.options.getString(SLASH_COMMANDS.changeScene.subcommand.scene.id)}\``;
+        break;
+
       default:
-        return inter.reply('Invalid scene');
+        return inter.reply('Invalid command');
     }
 
     if (!sceneToChangeTo) {
-      return inter.reply('Scene not set');
+      return inter.reply(`Could not find ${targetSceneName}`);
     }
 
-    inter.reply('Scene changed');
+    inter.reply(`Scene changed to ${targetSceneName}`);
 
     return obsConnector.changeScene(sceneToChangeTo);
   }
@@ -255,25 +292,32 @@ export class DiscordBot {
       new Discord.SlashCommandBuilder()
         .setName(SLASH_COMMANDS.changeScene.id)
         .setDescription('Changes the scene when a member is streaming')
-        .addStringOption((option) =>
-          option
-            .setName(SLASH_COMMANDS.changeScene.options.scene.id)
-            .setDescription('The scene to change to')
-            .setRequired(true)
-            .addChoices([
-              {
-                name: 'Default',
-                value: SLASH_COMMANDS.changeScene.options.scene.values.default,
-              },
-              {
-                name: 'Audio Scene',
-                value: SLASH_COMMANDS.changeScene.options.scene.values.audio,
-              },
-              {
-                name: 'Video Scene',
-                value: SLASH_COMMANDS.changeScene.options.scene.values.video,
-              },
-            ])
+        .addSubcommand((subCommand) =>
+          subCommand
+            .setName(SLASH_COMMANDS.changeScene.subcommand.scene.values.default.name)
+            .setDescription('The scene to change to the configured default scene')
+        )
+        .addSubcommand((subCommand) =>
+          subCommand
+            .setName(SLASH_COMMANDS.changeScene.subcommand.scene.values.audio.name)
+            .setDescription('The scene to change to the configured audio scene')
+        )
+        .addSubcommand((subCommand) =>
+          subCommand
+            .setName(SLASH_COMMANDS.changeScene.subcommand.scene.values.video.name)
+            .setDescription('The scene to change to the configured video scene')
+        )
+        .addSubcommand((subCommand) =>
+          subCommand
+            .setName(SLASH_COMMANDS.changeScene.subcommand.scene.values.custom.name)
+            .setDescription('The scene to change to any OBS scene')
+            .addStringOption((option) =>
+              option
+                .setName(SLASH_COMMANDS.changeScene.subcommand.scene.values.custom.options.scene)
+                .setDescription('The scene to change to')
+                .setAutocomplete(true)
+                .setRequired(true)
+            )
         )
         .setDefaultMemberPermissions(Discord.PermissionFlagsBits.MoveMembers),
     ])
