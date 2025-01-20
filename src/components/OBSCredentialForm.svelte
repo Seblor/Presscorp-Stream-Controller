@@ -43,7 +43,7 @@
       Port:
       <input
         disabled={isConnecting}
-        class={`w-32 ${isConnecting ? "bg-slate-700 cursor-not-allowed" : "bg-slate-500"}`}
+        class={`rounded px-2 text-center w-32 ${isConnecting ? "bg-slate-700 cursor-not-allowed" : "bg-slate-500"}`}
         type="text"
         bind:value={websocketPort}
       />
@@ -53,7 +53,7 @@
       Password:
       <input
         disabled={isConnecting}
-        class={`w-32 ${isConnecting ? "bg-slate-700 cursor-not-allowed" : "bg-slate-500"}`}
+        class={`rounded px-2 text-center w-32 ${isConnecting ? "bg-slate-700 cursor-not-allowed" : "bg-slate-500"}`}
         type="password"
         bind:value={password}
       />

@@ -5,6 +5,7 @@ const storedSettings = localStorage.getItem('appSettings');
 export const appSettings = writable<{
   selectedChannelId: string,
   botRole: string,
+  orderBottom: boolean,
   casterRole: string,
   recordingGracePeriodSeconds: number,
   defaultSceneUuid: string,
@@ -18,6 +19,7 @@ export const appSettings = writable<{
 }>({
   selectedChannelId: "",
   botRole: "",
+  orderBottom: false,
   casterRole: "",
   recordingGracePeriodSeconds: 5,
   defaultSceneUuid: "",

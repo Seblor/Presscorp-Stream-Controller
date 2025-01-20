@@ -6,6 +6,11 @@ import obsConnector from "./OBS";
 const Discord = require("discord.js") as typeof import("discord.js");
 const DiscordVoice = require("@discordjs/voice") as typeof import("@discordjs/voice");
 
+const ON_AIR_PREFIX = {
+  normal: '[ON AIR] ',
+  bottom: '【ON AIR】',
+}
+
 const SLASH_COMMANDS = {
   startRecording: {
     id: 'start-recording',
@@ -69,9 +74,22 @@ export class DiscordBot {
       }
       const guild = this.client.guilds.cache.get((this.client.channels.cache.get(get(appSettings).selectedChannelId) as GuildBasedChannel)?.guildId || '')
       if (isRecording) {
-        guild.members.me?.setNickname(`[ON AIR] ${this.client.user?.username}`);
+        guild.members.me?.setNickname(`${get(appSettings).orderBottom ? ON_AIR_PREFIX.bottom : ON_AIR_PREFIX.normal}${this.client.user?.username}`);
       } else {
         guild.members.me?.setNickname(this.client.user?.username);
+      }
+    });
+
+    // Dynamically change prefix version if the other is applied
+    appSettings.subscribe((value) => {
+      const guild = this.client.guilds.cache.get((this.client.channels.cache.get(get(appSettings).selectedChannelId) as GuildBasedChannel)?.guildId || '')
+      if (!guild) {
+        return;
+      }
+      if (value.orderBottom && guild.members.me?.nickname?.startsWith(ON_AIR_PREFIX.normal)) {
+        guild.members.me?.setNickname(`${ON_AIR_PREFIX.bottom}${this.client.user?.username}`);
+      } else if (!value.orderBottom && guild.members.me?.nickname?.startsWith(ON_AIR_PREFIX.bottom)) {
+        guild.members.me?.setNickname(`${ON_AIR_PREFIX.normal}${this.client.user?.username}`);
       }
     });
 
@@ -135,6 +153,21 @@ export class DiscordBot {
       if (interaction.commandName === 'stop-recording') {
         obsConnector.stopRecording(true);
         interaction.reply('Recording stopped');
+      }
+    });
+
+    this.client.on("guildMemberUpdate", async (user) => {
+      if (user.voice.channel?.members.get(this.client.user?.id)) {
+        this.eventListeners.onVoiceChannelsMembersChange.forEach((callback) => callback(
+          user.voice.channel.members.map((member) => ({
+            id: member.id,
+            name: member.displayName ?? member.user.username,
+            isMuted: member.voice.selfMute,
+            isStreaming: member.voice.streaming,
+            iconUrl: member.user.displayAvatarURL(),
+            roles: [...member.roles.cache.keys()],
+          }))
+        ));
       }
     });
 
