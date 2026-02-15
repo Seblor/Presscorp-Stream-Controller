@@ -60,19 +60,36 @@
     }
   });
 
+  let restoreBackgroundVolumeTimeout: NodeJS.Timeout | null = null;
+
   function reduceBackgroundVolume() {
+    // Clear any pending restore
+    if (restoreBackgroundVolumeTimeout) {
+      clearTimeout(restoreBackgroundVolumeTimeout);
+      restoreBackgroundVolumeTimeout = null;
+    }
+    
     obsConnector.setInputsVolume(
       $appSettings.inputsToMuteOnSpeaking,
       $appSettings.backgroundVolumeSpeaking,
     );
   }
 
-  const restoreBackgroundVolume = debounce(() => {
-    obsConnector.setInputsVolume(
-      $appSettings.inputsToMuteOnSpeaking,
-      $appSettings.backgroundVolumeSilence,
-    );
-  }, $appSettings.backgroundMuteDelaySeconds * 1000);
+  function restoreBackgroundVolume() {
+    // Clear any existing timeout
+    if (restoreBackgroundVolumeTimeout) {
+      clearTimeout(restoreBackgroundVolumeTimeout);
+    }
+    
+    // Use current settings value for delay
+    restoreBackgroundVolumeTimeout = setTimeout(() => {
+      obsConnector.setInputsVolume(
+        $appSettings.inputsToMuteOnSpeaking,
+        $appSettings.backgroundVolumeSilence,
+      );
+      restoreBackgroundVolumeTimeout = null;
+    }, $appSettings.backgroundMuteDelaySeconds * 1000);
+  }
 
   function updateMembersList(newList: typeof voiceMembers) {
     voiceMembers.splice(0, voiceMembers.length, ...newList);

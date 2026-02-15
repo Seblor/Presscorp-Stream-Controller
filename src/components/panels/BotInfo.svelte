@@ -12,23 +12,37 @@
   let botName = $state("");
   let botIcon = $state("");
 
+  // Update bot info when login state changes
+  discordBot.onLogin(() => {
+    updateBotInfo();
+  });
+
+  function updateBotInfo() {
+    const botData = discordBot.getBotData();
+    botName = botData.name;
+    botIcon = botData.iconUrl;
+  }
+
   discordToken.subscribe((token) => {
     if (token) {
       logIn(token);
     } else {
       discordBot.disconnect();
+      botName = "";
+      botIcon = "";
     }
   });
 
   async function logIn(userToken: string) {
-    // Here you would typically make an API call to validate the token
-    // and fetch the bot information. For this example, we'll just set
-    // some dummy data.
     token = userToken;
-    await discordBot.login(token);
-    const botData = discordBot.getBotData();
-    botName = botData.name;
-    botIcon = botData.iconUrl;
+    try {
+      await discordBot.login(token);
+      // Bot info will be updated via onLogin callback
+    } catch (error) {
+      console.error('Login failed:', error);
+      // Clear token on login failure
+      discordToken.set("");
+    }
   }
 </script>
 

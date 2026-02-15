@@ -21,16 +21,23 @@
 
   let selectedChannelName = $state("");
 
+  // Update channel name when settings change
   appSettings.subscribe(() => {
-    selectedChannelName = discordBot.getChannelName(
-      $appSettings.selectedChannelId,
-    );
+    updateChannelName();
     if ($appSettings.selectedChannelId) {
       discordBot.joinVoicechannel($appSettings.selectedChannelId);
     } else {
       discordBot.leaveVoiceChannel();
     }
   });
+
+  function updateChannelName() {
+    if ($appSettings.selectedChannelId) {
+      selectedChannelName = discordBot.getChannelName($appSettings.selectedChannelId);
+    } else {
+      selectedChannelName = "";
+    }
+  }
 
   function updateChannels() {
     treeData.children = [];
@@ -53,6 +60,8 @@
         id: channel.channelId,
       });
     });
+    // Update channel name when channels are refreshed
+    updateChannelName();
   }
 
   discordBot.onLogin(() => {

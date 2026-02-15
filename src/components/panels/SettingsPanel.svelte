@@ -124,7 +124,7 @@
       </div>
       <div class="flex gap-2">
         <Tooltip
-          title="The grace period after the last person stops speaking before the recording stops."
+          title="The grace period after the last person leaves the channel before the recording stops."
         >
           <span>Recording grace period (seconds):</span>
         </Tooltip>
@@ -169,7 +169,7 @@
       </div>
       <div class="flex gap-2">
         <Tooltip
-          title="The scene to switch to when <b>someone</b> is streaming on Discord and you want to share the <b>video</b>."
+          title="The scene to switch to when <b>someone</b> is streaming on Discord and you want to share the <b>video</b>.<br>Triggered manually with the Discord slash command."
         >
           Discord video scene:
         </Tooltip>
@@ -187,7 +187,7 @@
     <div class="flex flex-col justify-around gap-2">
       <div class="flex gap-2 justify-end">
         <Tooltip
-          title="The scene to switch to when <b>no one</b> is streaming on Discord."
+          title="The volume of the background tracks when someone is speaking in the voice channel. (0 = muted, 100 = original volume)"
         >
           Volume when speaking:
         </Tooltip>
@@ -199,7 +199,7 @@
       </div>
       <div class="flex gap-2 justify-end">
         <Tooltip
-          title="The scene to switch to when <b>someone</b> is streaming on Discord."
+          title="The volume of the background tracks when no one is speaking in the voice channel. (0 = muted, 100 = original volume)"
         >
           Volume when silence:
         </Tooltip>

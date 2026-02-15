@@ -6,11 +6,13 @@
   import SettingsPanel from "./components/panels/SettingsPanel.svelte";
   import ObsInfo from "./components/panels/OBSInfo.svelte";
   import BrowserStatus from "./components/panels/BrowserStatus.svelte";
+  import Documentation from "./components/Documentation.svelte";
   import "./connections/Browser";
   import "./lib/DialogUtils";
   import { checkForUpdate } from "./lib/UpdateChecker";
 
   let isBotReady = $state(false);
+  let isDocumentationOpen = $state(false);
 
   discordBot.isLoggedIn.subscribe((value) => {
     isBotReady = value;
@@ -68,26 +70,43 @@
 
   <!-- Footer -->
   <footer class="footer bg-gray-950 bottom-0 left-0 w-full h-14 py-2">
-    <div class="flex justify-between items-center mx-6">
-      <p class="text-xs font-light">Made with 🧡 by Seblor</p>
+    <div class="flex justify-between items-stretch mx-6">
+      <div class="flex items-center">
+        <p class="text-xs font-light">Made with 🧡 by Seblor</p>
+      </div>
       {#if newUpdateAvailable}
-        <p class="text-xs font-light">
-          <a href="https://github.com/Seblor/presscorp-stream-controller/releases/latest" target="_blank">New update available: {newUpdateVersion}</a>
-        </p>
+        <div class="flex items-center gap-2">
+          <p class="text-xs font-light">
+            <a
+              href="https://github.com/Seblor/presscorp-stream-controller/releases/latest"
+              target="_blank">New update available: {newUpdateVersion}</a
+            >
+          </p>
+        </div>
       {/if}
-      <p>
-        <a
-          target="_blank"
-          rel="noreferrer"
-          href="https://ko-fi.com/Seblor"
-          class="text-xs flex items-center py-1 px-4 bg-gray-800 hover:bg-indigo-700 text-white
+      <div class="flex gap-3">
+        <button
+          onclick={() => (isDocumentationOpen = true)}
+          class="text-xs flex h-full items-center py-1 px-4 bg-gray-800 hover:bg-indigo-700 text-white
       transition ease-in duration-200 text-center shadow-md focus:outline-none rounded-md"
         >
-          Buy me a coffee <span class="ml-3 text-2xl">☕️</span>
-        </a>
-      </p>
+          📖 Documentation
+        </button>
+      </div>
+      <a
+        target="_blank"
+        rel="noreferrer"
+        href="https://ko-fi.com/Seblor"
+        class="text-xs flex h-full items-center py-1 px-4 bg-gray-800 hover:bg-indigo-700 text-white
+      transition ease-in duration-200 text-center shadow-md focus:outline-none rounded-md"
+      >
+        Buy me a coffee <span class="ml-3 text-2xl">☕️</span>
+      </a>
     </div>
   </footer>
+
+  <!-- Documentation Modal -->
+  <Documentation bind:isOpen={isDocumentationOpen} />
 </main>
 
 <style>

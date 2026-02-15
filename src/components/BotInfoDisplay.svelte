@@ -1,10 +1,33 @@
 <script>
   import { createEventDispatcher } from "svelte";
   import { discordToken } from "../stores/credentials";
+  import discordBot from "../connections/DiscordBot";
 
   let { botName = "", botIcon = "" } = $props();
 
   const dispatch = createEventDispatcher();
+
+  async function handleReconnect() {
+    if (confirm("Are you sure you want to reconnect? This will temporarily disconnect the bot.")) {
+      const token = localStorage.getItem('discordCredentials');
+      if (!token) {
+        alert('No saved token found');
+        return;
+      }
+      
+      try {
+        // Disconnect first
+        await discordBot.disconnect();
+        // Wait a moment for cleanup
+        await new Promise(resolve => setTimeout(resolve, 500));
+        // Reconnect
+        await discordBot.login(token);
+      } catch (error) {
+        console.error('Reconnect failed:', error);
+        alert('Reconnection failed. Please disconnect and log in again.');
+      }
+    }
+  }
 
   function handleReset() {
     if (confirm("Are you sure you want to disconnect?")) {
@@ -38,7 +61,7 @@
   </div>
   <div class="flex gap-4">
     <button
-      onclick={() => window.location.reload()}
+      onclick={handleReconnect}
       class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 focus:ring-offset-gray-900 transition duration-200"
     >
       Reconnect

@@ -9,7 +9,7 @@ export default defineConfig({
       'discord.js',
     ],
   },
-  base: process.env.DEV_ENV == 'true' ? '/' : './',
+  base: process.env.DEV_ENV === 'true' ? '/' : './',
   build: {
     outDir: 'electron/build'
   },

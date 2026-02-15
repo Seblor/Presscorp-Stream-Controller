@@ -1,56 +1,51 @@
-import { VoiceConnection, type DiscordGatewayAdapterCreator } from "@discordjs/voice";
-import { CommandInteraction, type Client, type GuildBasedChannel, type VoiceBasedChannel } from "discord.js";
 import { get, writable } from "svelte/store";
 import { appSettings } from "../stores/settings";
 import obsConnector from "./OBS";
-const Discord = require("discord.js") as typeof import("discord.js");
-const DiscordVoice = require("@discordjs/voice") as typeof import("@discordjs/voice");
 
-const ON_AIR_PREFIX = {
-  normal: '[ON AIR] ',
-  bottom: '【ON AIR】',
-}
-
-const SLASH_COMMANDS = {
-  startRecording: {
-    id: 'start-recording',
-  },
-  stopRecording: {
-    id: 'stop-recording',
-  },
-  changeScene: {
-    id: 'change-scene',
-    subcommand: {
-      scene: {
-        id: 'scene',
-        values: {
-          default: {
-            name: 'default',
-          },
-          audio: {
-            name: 'audio',
-          },
-          video: {
-            name: 'video',
-          },
-          custom: {
-            name: 'custom',
-            options: {
-              scene: 'scene',
-            },
-          },
-        }
-      }
-    },
-  },
+// Type definition for Discord API from preload
+declare global {
+  interface Window {
+    discordAPI: {
+      login: (token: string) => Promise<{ success: boolean; error?: string }>;
+      disconnect: () => Promise<{ success: boolean; error?: string }>;
+      joinVoiceChannel: (channelId: string) => Promise<{ success: boolean; error?: string }>;
+      leaveVoiceChannel: () => Promise<{ success: boolean }>;
+      getCurrentVoiceChannelMembers: () => Promise<Array<{ id: string, name: string, iconUrl: string, isMuted: boolean, isStreaming: boolean, roles: Array<string> }>>;
+      getBotData: () => Promise<{ name: string, iconUrl: string }>;
+      getChannelName: (channelId: string) => Promise<string>;
+      getRoles: (guildId?: string) => Promise<Array<{ id: string, name: string, color: string }>>;
+      botHasRole: (roleId: string) => Promise<boolean>;
+      getAllVoiceChannels: () => Promise<Array<{ guildId: string, guildName: string, guildIconUrl: string, channelName: string, channelId: string }>>;
+      getPeopleSpeaking: () => Promise<Record<string, boolean>>;
+      getIsLoggedIn: () => Promise<boolean>;
+      updateSettings: (settings: unknown) => void;
+      updateRecordingState: (isRecording: boolean) => void;
+      updateOrderBottom: (orderBottom: boolean) => void;
+      respondObsScenes: (scenes: Array<{ name: string, uuid: string }>) => void;
+      respondSceneUuid: (data: { sceneUuid?: string, targetSceneName: string, interactionId: string }) => void;
+      onLoginStateChanged: (callback: (isLoggedIn: boolean) => void) => () => void;
+      onVoiceChannelsChanged: (callback: () => void) => () => void;
+      onVoiceMembersChanged: (callback: (members: Array<{ id: string, name: string, iconUrl: string, isMuted: boolean, isStreaming: boolean, roles: Array<string> }>) => void) => () => void;
+      onVoiceActivity: (callback: (data: { isSomeoneSpeaking: boolean, peopleSpeaking: Record<string, boolean> }) => void) => () => void;
+      onRolesChanged: (callback: (roles: Array<{ id: string, name: string, color: string }>) => void) => () => void;
+      onRequestObsScenes: (callback: (userValue: string) => void) => () => void;
+      onRequestSceneUuid: (callback: (data: { sceneName: string, interactionId: string }) => void) => () => void;
+      onCommandStartRecording: (callback: () => void) => () => void;
+      onCommandStopRecording: (callback: () => void) => () => void;
+      onCommandChangeScene: (callback: (sceneUuid: string) => void) => () => void;
+    };
+  }
 }
 
 export class DiscordBot {
-  private readonly client: Client;
   isLoggedIn = writable(false);
-
-  voiceConnection: VoiceConnection | null = null;
   peopleSpeaking: Record<string, boolean> = {};
+
+  // Cached data for sync access
+  private cachedBotData: { name: string, iconUrl: string } = { name: "Unknown", iconUrl: "" };
+  private cachedChannelNames: Map<string, string> = new Map();
+  private cachedVoiceChannels: Array<{ guildId: string, guildName: string, guildIconUrl: string, channelName: string, channelId: string }> = [];
+  private cachedVoiceMembers: Array<{ id: string, name: string, iconUrl: string, isMuted: boolean, isStreaming: boolean, roles: Array<string> }> = [];
 
   private readonly eventListeners = {
     'onLogin': [] as Array<() => void>,
@@ -60,372 +55,200 @@ export class DiscordBot {
     'onRolesChange': [] as Array<(roles: Array<{ id: string, name: string, color: string }>) => void>,
   }
 
+  private cleanupFunctions: Array<() => void> = [];
+
   constructor() {
-    this.client = new Discord.Client({
-      intents: [
-        Discord.IntentsBitField.Flags.GuildVoiceStates,
-        Discord.IntentsBitField.Flags.Guilds,
-      ],
-    });
+    // Set up IPC event listeners
+    this.setupIpcListeners();
 
+    // Sync OBS recording state to main process
     obsConnector.isRecording.subscribe((isRecording) => {
-      if (!get(this.isLoggedIn)) {
-        return;
-      }
-      const guild = this.client.guilds.cache.get((this.client.channels.cache.get(get(appSettings).selectedChannelId) as GuildBasedChannel)?.guildId || '')
-      if (isRecording) {
-        guild.members.me?.setNickname(`${get(appSettings).orderBottom ? ON_AIR_PREFIX.bottom : ON_AIR_PREFIX.normal}${this.client.user?.username}`);
-      } else {
-        guild.members.me?.setNickname(this.client.user?.username);
+      if (window.discordAPI) {
+        window.discordAPI.updateRecordingState(isRecording);
       }
     });
 
-    // Dynamically change prefix version if the other is applied
+    // Sync orderBottom setting to main process
     appSettings.subscribe((value) => {
-      const guild = this.client.guilds.cache.get((this.client.channels.cache.get(get(appSettings).selectedChannelId) as GuildBasedChannel)?.guildId || '')
-      if (!guild) {
-        return;
-      }
-      if (value.orderBottom && guild.members.me?.nickname?.startsWith(ON_AIR_PREFIX.normal)) {
-        guild.members.me?.setNickname(`${ON_AIR_PREFIX.bottom}${this.client.user?.username}`);
-      } else if (!value.orderBottom && guild.members.me?.nickname?.startsWith(ON_AIR_PREFIX.bottom)) {
-        guild.members.me?.setNickname(`${ON_AIR_PREFIX.normal}${this.client.user?.username}`);
+      if (window.discordAPI) {
+        window.discordAPI.updateSettings(value);
+        window.discordAPI.updateOrderBottom(value.orderBottom);
       }
     });
-
-    this.client.on("interactionCreate", async (interaction) => {
-      if (
-        interaction.isAutocomplete()
-        && interaction.commandName === SLASH_COMMANDS.changeScene.id
-        && interaction.options.getSubcommand() === SLASH_COMMANDS.changeScene.subcommand.scene.values.custom.name
-      ) {
-        const userValue = interaction.options.getFocused();
-        const matchingScenes = get(obsConnector.scenes).filter((scene) => {
-          return scene.name.toLowerCase().includes(userValue.toLowerCase())
-        });
-
-        interaction.respond(matchingScenes.map((scene) => ({
-          name: scene.name,
-          value: scene.name,
-        })));
-      }
-      if (!interaction.isCommand()) {
-        return;
-      }
-
-      const guild = this.client.guilds.cache.get((this.client.channels.cache.get(get(appSettings).selectedChannelId) as GuildBasedChannel)?.guildId || '')
-
-      if (!guild || interaction.guildId !== guild.id) {
-        return;
-      }
-
-      const userRoles = Array.isArray(interaction.member.roles) ? interaction.member.roles : [...interaction.member.roles.cache.keys()];
-
-      if (userRoles.includes(get(appSettings).casterRole) === false) {
-        return interaction.reply({
-          content: 'You do not have the permissions to use this command',
-          ephemeral: true,
-        });
-      }
-
-      switch (interaction.commandName) {
-        case SLASH_COMMANDS.startRecording.id:
-          interaction.reply('Recording started');
-          break;
-
-        case SLASH_COMMANDS.stopRecording.id:
-          interaction.reply('Recording stopped');
-          break;
-
-        case SLASH_COMMANDS.changeScene.id:
-          this.handleSceneChangeCommand(interaction);
-          break;
-
-        default:
-          break;
-      }
-
-      if (interaction.commandName === 'start-recording') {
-        obsConnector.startRecording();
-        interaction.reply('Recording started');
-      }
-
-      if (interaction.commandName === 'stop-recording') {
-        obsConnector.stopRecording(true);
-        interaction.reply('Recording stopped');
-      }
-    });
-
-    this.client.on("guildMemberUpdate", async (user) => {
-      if (user.voice.channel?.members.get(this.client.user?.id)) {
-        this.eventListeners.onVoiceChannelsMembersChange.forEach((callback) => callback(
-          user.voice.channel.members.map((member) => ({
-            id: member.id,
-            name: member.displayName ?? member.user.username,
-            isMuted: member.voice.selfMute,
-            isStreaming: member.voice.streaming,
-            iconUrl: member.user.displayAvatarURL(),
-            roles: [...member.roles.cache.keys()],
-          }))
-        ));
-      }
-    });
-
-    this.client.on("channelUpdate", async (channel) => {
-      if (channel.isVoiceBased()) {
-        this.eventListeners.onVoiceChannelsChange.forEach((callback) => callback());
-      }
-    });
-
-    this.client.on("channelCreate", async (channel) => {
-      if (channel.isVoiceBased()) {
-        this.eventListeners.onVoiceChannelsChange.forEach((callback) => callback());
-      }
-    });
-
-    this.client.on("channelDelete", async (channel) => {
-      if (channel.isVoiceBased()) {
-        this.eventListeners.onVoiceChannelsChange.forEach((callback) => callback());
-      }
-    });
-
-    this.client.on("roleCreate", async (role) => {
-      const roles = await this.getRoles(role.guild.id);
-      this.eventListeners.onRolesChange.forEach((callback) => callback(roles));
-    });
-
-    this.client.on("roleDelete", async (role) => {
-      const roles = await this.getRoles(role.guild.id);
-      this.eventListeners.onRolesChange.forEach((callback) => callback(roles));
-    });
-
-    this.client.on("roleUpdate", async (role) => {
-      const roles = await this.getRoles(role.guild.id);
-      this.eventListeners.onRolesChange.forEach((callback) => callback(roles));
-    });
-
-    this.client.on('voiceStateUpdate', async (oldState, newState) => {
-      let channelWithBot: VoiceBasedChannel | null = null;
-      if (oldState.channel?.members.get(this.client.user?.id)) {
-        channelWithBot = oldState.channel;
-      }
-      if (newState.channel?.members.get(this.client.user?.id)) {
-        channelWithBot = newState.channel;
-      }
-      if (channelWithBot) {
-
-        if (oldState.channel === newState.channel) {
-          oldState.channel.members.forEach((member) => {
-            if (!newState.channel.members.get(member.id)) {
-              delete this.peopleSpeaking[member.id]
-            }
-          });
-
-          newState.channel.members.forEach((member) => {
-            if (!oldState.channel.members.get(member.id)) {
-              if (Object.hasOwn(this.peopleSpeaking, member.id)) {
-                this.peopleSpeaking[member.id] = false;
-              }
-            }
-          });
-        }
-
-        this.eventListeners.onVoiceChannelsMembersChange.forEach((callback) => callback(
-          channelWithBot.members.map((member) => ({
-            id: member.id,
-            name: member.displayName ?? member.user.username,
-            isMuted: member.voice.selfMute,
-            isStreaming: member.voice.streaming,
-            iconUrl: member.user.displayAvatarURL(),
-            roles: [...member.roles.cache.keys()],
-          }))
-        ));
-      }
-    })
   }
 
-  handleSceneChangeCommand (inter: CommandInteraction) {
-    if (!inter.isChatInputCommand() || inter.commandName !== SLASH_COMMANDS.changeScene.id) {
+  private async updateCachedData() {
+    if (!window.discordAPI) return;
+
+    // Update bot data
+    this.cachedBotData = await window.discordAPI.getBotData();
+
+    // Update voice channels
+    this.cachedVoiceChannels = await window.discordAPI.getAllVoiceChannels();
+
+    // Update voice members
+    this.cachedVoiceMembers = await window.discordAPI.getCurrentVoiceChannelMembers();
+  }
+
+  private setupIpcListeners() {
+    if (!window.discordAPI) {
+      console.warn('Discord API not available - running without IPC');
       return;
     }
 
-    const chosenScene = inter.options.getSubcommand() as keyof typeof SLASH_COMMANDS.changeScene.subcommand.scene.values;
+    // Login state changes
+    const removeLoginListener = window.discordAPI.onLoginStateChanged(async (isLoggedIn) => {
+      this.isLoggedIn.set(isLoggedIn);
+      if (isLoggedIn) {
+        await this.updateCachedData();
+        this.eventListeners.onLogin.forEach((callback) => { callback(); });
+      } else {
+        // Clear cache on logout
+        this.cachedBotData = { name: "Unknown", iconUrl: "" };
+        this.cachedChannelNames.clear();
+        this.cachedVoiceChannels = [];
+        this.cachedVoiceMembers = [];
+      }
+    });
+    this.cleanupFunctions.push(removeLoginListener);
 
-    const peopleInVoiceChannel = this.getCurrentVoiceChannelMembers();
+    // Voice channels changed
+    const removeVoiceChannelsListener = window.discordAPI.onVoiceChannelsChanged(async () => {
+      this.cachedVoiceChannels = await window.discordAPI.getAllVoiceChannels();
+      this.eventListeners.onVoiceChannelsChange.forEach((callback) => { callback(); });
+    });
+    this.cleanupFunctions.push(removeVoiceChannelsListener);
 
-    const doesSceneRequireStreamingMember = chosenScene === 'audio' || chosenScene === 'video'
-    if (doesSceneRequireStreamingMember && !peopleInVoiceChannel.some((person) => person.isStreaming)) {
-      return inter.reply('No one is streaming');
-    }
+    // Voice members changed
+    const removeVoiceMembersListener = window.discordAPI.onVoiceMembersChanged((members) => {
+      this.cachedVoiceMembers = members;
+      this.eventListeners.onVoiceChannelsMembersChange.forEach((callback) => { callback(members); });
+    });
+    this.cleanupFunctions.push(removeVoiceMembersListener);
 
-    let sceneToChangeTo: string | undefined;
-    let targetSceneName: string;
-    switch (chosenScene) {
-      case 'audio':
-        sceneToChangeTo = get(appSettings).memberStreamAudioSceneUuid;
-        targetSceneName = 'configured audio scene';
-        break;
+    // Voice activity
+    const removeVoiceActivityListener = window.discordAPI.onVoiceActivity((data) => {
+      this.peopleSpeaking = data.peopleSpeaking;
+      this.eventListeners.onVoiceChannelsVoiceActivity.forEach((callback) => { callback(data.isSomeoneSpeaking); });
+    });
+    this.cleanupFunctions.push(removeVoiceActivityListener);
 
-      case 'video':
-        sceneToChangeTo = get(appSettings).memberStreamVideoSceneUuid;
-        targetSceneName = 'configured video scene';
-        break;
+    // Roles changed
+    const removeRolesListener = window.discordAPI.onRolesChanged((roles) => {
+      this.eventListeners.onRolesChange.forEach((callback) => { callback(roles); });
+    });
+    this.cleanupFunctions.push(removeRolesListener);
 
-      case 'default':
-        sceneToChangeTo = get(appSettings).defaultSceneUuid;
-        targetSceneName = 'configured default scene';
-        break;
-      case 'custom':
-        sceneToChangeTo = get(obsConnector.scenes).find((scene) => scene.name === inter.options.getString(SLASH_COMMANDS.changeScene.subcommand.scene.id))?.uuid ?? undefined;
-        targetSceneName = `scene named \`${inter.options.getString(SLASH_COMMANDS.changeScene.subcommand.scene.id)}\``;
-        break;
+    // OBS scenes request (for autocomplete)
+    const removeObsScenesListener = window.discordAPI.onRequestObsScenes((userValue) => {
+      const matchingScenes = get(obsConnector.scenes).filter((scene) => {
+        return scene.name.toLowerCase().includes(userValue.toLowerCase())
+      });
+      window.discordAPI.respondObsScenes(matchingScenes);
+    });
+    this.cleanupFunctions.push(removeObsScenesListener);
 
-      default:
-        return inter.reply('Invalid command');
-    }
+    // Scene UUID request (for custom scene command)
+    const removeSceneUuidListener = window.discordAPI.onRequestSceneUuid((data) => {
+      const scene = get(obsConnector.scenes).find((scene) => scene.name === data.sceneName);
+      window.discordAPI.respondSceneUuid({
+        sceneUuid: scene?.uuid,
+        targetSceneName: `scene named \`${data.sceneName}\``,
+        interactionId: data.interactionId
+      });
+    });
+    this.cleanupFunctions.push(removeSceneUuidListener);
 
-    if (!sceneToChangeTo) {
-      return inter.reply(`Could not find ${targetSceneName}`);
-    }
+    // Command handlers from Discord slash commands
+    const removeStartRecordingListener = window.discordAPI.onCommandStartRecording(() => {
+      obsConnector.startRecording();
+    });
+    this.cleanupFunctions.push(removeStartRecordingListener);
 
-    inter.reply(`Scene changed to ${targetSceneName}`);
+    const removeStopRecordingListener = window.discordAPI.onCommandStopRecording(() => {
+      obsConnector.stopRecording(true);
+    });
+    this.cleanupFunctions.push(removeStopRecordingListener);
 
-    return obsConnector.changeScene(sceneToChangeTo);
+    const removeChangeSceneListener = window.discordAPI.onCommandChangeScene((sceneUuid) => {
+      obsConnector.changeScene(sceneUuid);
+    });
+    this.cleanupFunctions.push(removeChangeSceneListener);
   }
 
-  async login (token: string) {
-    await this.client.login(token);
-    await Promise.all([...(await this.client.guilds.fetch()).mapValues((guild) => guild.fetch()).values()]);
-    this.isLoggedIn.set(true);
-    this.eventListeners.onLogin.forEach((callback) => callback());
+  async login(token: string) {
+    if (!window.discordAPI) {
+      throw new Error('Discord API not available');
+    }
+    const result = await window.discordAPI.login(token);
+    if (!result.success) {
+      throw new Error(result.error || 'Login failed');
+    }
+    // Sync current settings to main process
+    window.discordAPI.updateSettings(get(appSettings));
   }
 
-  async disconnect () {
-    const roles = await this.getRoles();
-    this.eventListeners.onRolesChange.forEach((callback) => callback(roles));
-    this.isLoggedIn.set(false);
-    return this.client.destroy();
-  }
-
-  async joinVoicechannel (channelId: string) {
-    const channel = this.client.channels.cache.get(channelId);
-    if (!channel || !channel.isVoiceBased() || channel.isDMBased()) {
+  async disconnect() {
+    if (!window.discordAPI) {
       return;
     }
+    try {
+      await window.discordAPI.disconnect();
+    } catch (error) {
+      console.error('Error disconnecting:', error);
+    }
+  }
 
-    await channel.guild.commands.set([
-      new Discord.SlashCommandBuilder()
-        .setName(SLASH_COMMANDS.startRecording.id)
-        .setDescription('start recording')
-        .setDefaultMemberPermissions(Discord.PermissionFlagsBits.MoveMembers),
-      new Discord.SlashCommandBuilder()
-        .setName(SLASH_COMMANDS.stopRecording.id)
-        .setDescription('stop recording')
-        .setDefaultMemberPermissions(Discord.PermissionFlagsBits.MoveMembers),
-      new Discord.SlashCommandBuilder()
-        .setName(SLASH_COMMANDS.changeScene.id)
-        .setDescription('Changes the scene when a member is streaming')
-        .addSubcommand((subCommand) =>
-          subCommand
-            .setName(SLASH_COMMANDS.changeScene.subcommand.scene.values.default.name)
-            .setDescription('The scene to change to the configured default scene')
-        )
-        .addSubcommand((subCommand) =>
-          subCommand
-            .setName(SLASH_COMMANDS.changeScene.subcommand.scene.values.audio.name)
-            .setDescription('The scene to change to the configured audio scene')
-        )
-        .addSubcommand((subCommand) =>
-          subCommand
-            .setName(SLASH_COMMANDS.changeScene.subcommand.scene.values.video.name)
-            .setDescription('The scene to change to the configured video scene')
-        )
-        .addSubcommand((subCommand) =>
-          subCommand
-            .setName(SLASH_COMMANDS.changeScene.subcommand.scene.values.custom.name)
-            .setDescription('The scene to change to any OBS scene')
-            .addStringOption((option) =>
-              option
-                .setName(SLASH_COMMANDS.changeScene.subcommand.scene.values.custom.options.scene)
-                .setDescription('The scene to change to')
-                .setAutocomplete(true)
-                .setRequired(true)
-            )
-        )
-        .setDefaultMemberPermissions(Discord.PermissionFlagsBits.MoveMembers),
-    ])
+  async joinVoicechannel(channelId: string) {
+    if (!window.discordAPI) {
+      throw new Error('Discord API not available');
+    }
+    const result = await window.discordAPI.joinVoiceChannel(channelId);
+    if (!result.success) {
+      throw new Error(result.error || 'Failed to join voice channel');
+    }
+    // Update cached members after joining
+    await this.updateCachedData();
+  }
 
-    this.voiceConnection = DiscordVoice.joinVoiceChannel({
-      channelId,
-      selfDeaf: false,
-      selfMute: true,
-      guildId: channel.guild.id,
-      adapterCreator: channel.guild.voiceAdapterCreator as DiscordGatewayAdapterCreator,
+  leaveVoiceChannel() {
+    if (!window.discordAPI) {
+      return;
+    }
+    window.discordAPI.leaveVoiceChannel();
+    this.cachedVoiceMembers = [];
+  }
+
+  getCurrentVoiceChannelMembers(): Array<{ id: string, name: string, iconUrl: string, isMuted: boolean, isStreaming: boolean, roles: Array<string> }> {
+    return this.cachedVoiceMembers;
+  }
+
+  getBotData() {
+    return this.cachedBotData;
+  }
+
+  getChannelName(channelId: string) {
+    if (!channelId || !window.discordAPI) {
+      return '';
+    }
+    
+    // Check cache first
+    if (this.cachedChannelNames.has(channelId)) {
+      const cachedName = this.cachedChannelNames.get(channelId);
+      if (cachedName) return cachedName;
+    }
+
+    // Fetch async and cache
+    window.discordAPI.getChannelName(channelId).then(name => {
+      this.cachedChannelNames.set(channelId, name);
     });
 
-    this.peopleSpeaking = {};
-
-    this.voiceConnection.receiver.speaking.on('start', (userId) => {
-      this.peopleSpeaking[userId] = true;
-      this.eventListeners.onVoiceChannelsVoiceActivity.forEach((callback) => callback(true));
-    });
-
-    this.voiceConnection.receiver.speaking.on('end', (userId) => {
-      this.peopleSpeaking[userId] = false;
-      this.eventListeners.onVoiceChannelsVoiceActivity.forEach((callback) => callback(Object.values(this.peopleSpeaking).some((isSpeaking) => isSpeaking)));
-    });
+    // Return from cachedVoiceChannels if available
+    const channel = this.cachedVoiceChannels.find(ch => ch.channelId === channelId);
+    return channel?.channelName || '';
   }
 
-  leaveVoiceChannel () {
-    if (this.voiceConnection) {
-      this.voiceConnection.destroy();
-      this.voiceConnection = null;
-    }
-  }
-
-  getCurrentVoiceChannelMembers (): Array<{ id: string, name: string, iconUrl: string, isMuted: boolean, isStreaming: boolean, roles: Array<string> }> {
-    if (!this.voiceConnection) {
-      return [];
-    }
-    const channelWithBot = this.client.channels.cache.get(this.voiceConnection.joinConfig.channelId);
-    if (!channelWithBot?.isVoiceBased()) {
-      return [];
-    }
-    return channelWithBot.members.map((member) => ({
-      id: member.id,
-      name: member.displayName ?? member.user.username,
-      isMuted: member.voice.selfMute,
-      isStreaming: member.voice.streaming,
-      iconUrl: member.user.displayAvatarURL(),
-      roles: [...member.roles.cache.keys()],
-    }))
-  }
-
-  getBotData () {
-    if (!get(this.isLoggedIn)) {
-      return {
-        name: "Unknown",
-        iconUrl: "",
-      }
-    }
-    return {
-      name: this.client.user?.username,
-      iconUrl: this.client.user?.displayAvatarURL(),
-    }
-  }
-
-  getChannelName (channelId: string) {
-    if (!channelId) {
-      return ''
-    }
-    const channel = this.client.channels.cache.get(channelId);
-    if (channel.isDMBased()) {
-      return 'Direct Message';
-    }
-    return channel.name;
-  }
-
-  onLogin (callback: () => void) {
+  onLogin(callback: () => void) {
     if (get(this.isLoggedIn)) {
       callback();
       return;
@@ -433,74 +256,49 @@ export class DiscordBot {
     this.eventListeners.onLogin.push(callback);
   }
 
-  onVoiceChannelsChange (callback: (channels: ReturnType<DiscordBot['getAllVoiceChannels']>) => void) {
-    this.eventListeners.onVoiceChannelsChange.push(() => callback(this.getAllVoiceChannels()));
+  onVoiceChannelsChange(callback: () => void) {
+    this.eventListeners.onVoiceChannelsChange.push(callback);
   }
 
-  onVoiceActivity (callback: (isSomeoneSpeaking: boolean) => void) {
+  onVoiceActivity(callback: (isSomeoneSpeaking: boolean) => void) {
     this.eventListeners.onVoiceChannelsVoiceActivity.push(callback);
   }
 
-  onVoiceMembersChange (callback: (members: Array<{ id: string, name: string, iconUrl: string, isMuted: boolean, isStreaming: boolean, roles: Array<string> }>) => void) {
+  onVoiceMembersChange(callback: (members: Array<{ id: string, name: string, iconUrl: string, isMuted: boolean, isStreaming: boolean, roles: Array<string> }>) => void) {
     this.eventListeners.onVoiceChannelsMembersChange.push(callback);
   }
 
-  onRolechanged (callback: (roles: Array<{ id: string, name: string, color: string }>) => void) {
+  onRolechanged(callback: (roles: Array<{ id: string, name: string, color: string }>) => void) {
     this.eventListeners.onRolesChange.push(callback);
   }
 
-  async getRoles (guildId?: string): Promise<Array<{ id: string, name: string, color: string }>> {
-    if (get(this.isLoggedIn) === false) {
-      return []
+  async getRoles(guildId?: string): Promise<Array<{ id: string, name: string, color: string }>> {
+    if (!window.discordAPI) {
+      return [];
     }
-    const guild = this.client.guilds.cache.get(guildId || (this.client.channels.cache.get(get(appSettings).selectedChannelId) as GuildBasedChannel)?.guildId || '')
-
-    if (!guild) {
-      return Promise.resolve([]);
-    }
-
-    const roles = await guild.roles.fetch();
-    return [...roles.values()].map((role) => ({
-      id: role.id,
-      name: role.name,
-      color: role.hexColor,
-    }));
+    return await window.discordAPI.getRoles(guildId);
   }
 
-  async botHasRole (roleId: string): Promise<boolean> {
-    const guild = this.client.guilds.cache.get(this.voiceConnection?.joinConfig.guildId || '');
-    if (!guild) {
+  async botHasRole(roleId: string): Promise<boolean> {
+    if (!window.discordAPI) {
       return false;
     }
-
-    const role = guild.roles.cache.get(roleId);
-    if (!role) {
-      return false;
-    }
-
-    return guild.members.me?.roles.cache.has(role.id) || false;
+    return await window.discordAPI.botHasRole(roleId);
   }
 
-  getAllVoiceChannels (): Array<{
+  getAllVoiceChannels(): Array<{
     guildId: string,
     guildName: string,
     guildIconUrl: string,
     channelName: string,
     channelId: string
   }> {
-    const channels = [...this.client.guilds.cache.map((guild) => {
-      return [...guild.channels.cache.filter((channel) => channel.isVoiceBased()).values()];
-    }).values()].flat();
+    return this.cachedVoiceChannels;
+  }
 
-    return channels.map((channel) => {
-      return {
-        guildId: channel.guild.id,
-        guildName: channel.guild.name,
-        guildIconUrl: channel.guild.iconURL(),
-        channelName: channel.name,
-        channelId: channel.id,
-      };
-    });
+  cleanup() {
+    this.cleanupFunctions.forEach(fn => { fn(); });
+    this.cleanupFunctions = [];
   }
 }
 
